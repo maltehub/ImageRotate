@@ -1,0 +1,32 @@
+{
+    "appKeys": {
+        "KEY_CONDITIONS": 1,
+        "KEY_TEMPERATURE": 0
+    },
+    "capabilities": [
+        "location"
+    ],
+    "companyName": "mkdesign",
+    "longName": "Tutorial 1",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "file": "images/watchface10.png",
+                "name": "GLOBE",
+                "type": "png"
+            }
+        ]
+    },
+    "sdkVersion": "3",
+    "shortName": "Tutorial 1",
+    "targetPlatforms": [
+        "aplite",
+        "basalt"
+    ],
+    "uuid": "6eb14645-3021-44f2-a4f4-12e7673d2293",
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": true
+    }
+}

@@ -12,8 +12,8 @@
     "resources": {
         "media": [
             {
-                "file": "images/watchface10.png",
-                "name": "GLOBE",
+                "file": "images/background.png",
+                "name": "BG_IMAGE",
                 "type": "png"
             }
         ]

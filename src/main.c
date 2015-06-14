@@ -13,6 +13,7 @@ static char temperature_buffer[8];
 static char conditions_buffer[32];
 static char weather_layer_buffer[32];
 static TextLayer *s_battery_layer;
+static int nextappointment=0;
 
 static void handle_battery(BatteryChargeState charge_state) {
   static char battery_text[] = "100%";
@@ -54,7 +55,7 @@ static void main_window_load(Window *window) {
       Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
-  s_bitmap = gbitmap_create_with_resource(RESOURCE_ID_GLOBE);
+  s_bitmap = gbitmap_create_with_resource(RESOURCE_ID_BG_IMAGE);
 
   s_bitmap_layer = bitmap_layer_create(bounds);
   bitmap_layer_set_bitmap(s_bitmap_layer, s_bitmap);
@@ -67,7 +68,12 @@ static void main_window_load(Window *window) {
   
   
   // Create time TextLayer
-  s_time_layer = text_layer_create(GRect(0, 26, 144, 40));
+  if (nextappointment==0){
+    s_time_layer = text_layer_create(GRect(0, 56, 144, 40));
+  }
+  else {
+    s_time_layer = text_layer_create(GRect(0, 26, 144, 40));
+  }
   text_layer_set_background_color(s_time_layer, GColorClear);
   text_layer_set_text_color(s_time_layer, GColorWhite);
   text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
@@ -80,7 +86,12 @@ static void main_window_load(Window *window) {
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_time_layer));
 
   // Create date TextLayer
-  s_date_layer = text_layer_create(GRect(22, 63, 47, 15));
+  if (nextappointment==0){
+    s_date_layer = text_layer_create(GRect(22, 93, 47, 15));
+  }
+  else {
+    s_date_layer = text_layer_create(GRect(22, 63, 47, 15));
+  }
   text_layer_set_background_color(s_date_layer, GColorClear);
   text_layer_set_text_color(s_date_layer, GColorWhite);
   text_layer_set_text_alignment(s_date_layer, GTextAlignmentLeft);

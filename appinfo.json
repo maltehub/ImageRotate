@@ -4,7 +4,8 @@
         "KEY_TEMPERATURE": 0
     },
     "capabilities": [
-        "location"
+        "location", 
+        "configurable"
     ],
     "companyName": "mkdesign",
     "longName": "Tutorial 1",

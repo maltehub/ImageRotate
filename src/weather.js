@@ -66,6 +66,22 @@ function getWeather() {
   );
 }
 
+
+function getCalendarData(){
+  var today = new Date();
+  offset = today.getTimezoneOffset();
+  hours_offset = Math.abs(offset) / 60 
+  hours = '' + hours_offset
+  if (hours_offset < 10) {
+    hours = '0' + hours_offset
+  }
+
+  dateString = today.toISOString();
+  readableDate = dateString.substring(0, dateString.indexOf('.')) + "+"+ hours + ":00";
+
+  console.log(readableDate);
+}
+
 // Listen for when the watchface is opened
 Pebble.addEventListener('ready', 
   function(e) {
@@ -73,6 +89,19 @@ Pebble.addEventListener('ready',
 
     // Get the initial weather
     getWeather();
+    getCalendarData();
+  }
+);
+
+// Show configuration page
+Pebble.addEventListener('showConfiguration', function(e) {
+  Pebble.openURL('http://localhost/pebble_test/config.html');
+});
+
+// Configuration closed
+Pebble.addEventListener('webviewclosed',
+  function(e) {
+    console.log('Configuration window returned: ' + e.response);
   }
 );
 

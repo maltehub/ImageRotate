@@ -95,7 +95,7 @@ Pebble.addEventListener('ready',
 
 // Show configuration page
 Pebble.addEventListener('showConfiguration', function(e) {
-  Pebble.openURL('http://localhost/pebble_test/config.html');
+  Pebble.openURL('http://vieju.net/misato/pebbleWear/config.html');
 });
 
 // Configuration closed

@@ -7,6 +7,17 @@ var xhrRequest = function (url, type, callback) {
   xhr.send();
 };
 
+function sendMessageToApp(dictionary){
+      Pebble.sendAppMessage(dictionary,
+        function(e) {
+          console.log('Message sent to Pebble successfully!');
+        },
+        function(e) {
+          console.log('Error sending message to Pebble!');
+        }
+      );
+}
+
 function locationSuccess(pos) {
   // Construct URL
   var url = 'http://api.openweathermap.org/data/2.5/weather?lat=' +
@@ -33,14 +44,7 @@ function locationSuccess(pos) {
       };
       
       // Send to Pebble
-      Pebble.sendAppMessage(dictionary,
-        function(e) {
-          console.log('Weather info sent to Pebble successfully!');
-        },
-        function(e) {
-          console.log('Error sending weather info to Pebble!');
-        }
-      );
+		sendMessageToApp(dictionary);
     }      
   );
 }
@@ -67,46 +71,181 @@ function getWeather() {
 }
 
 
+// Google Calendar FUNCTIONS
+
+var GOOGLE_CLIENT_ID = '1000865298828-ee7o3g9jsdimltbk9futjt6pp13vaav4.apps.googleusercontent.com';
+var GOOGLE_CLIENT_SECRET = 'QtGvlFxQGpdshPoqaiXS_gOD';
+var GOOGLE_REDIRECT_TOKEN_URI = 'http://vieju.net/misato/pebbleWear/configuration.php';
+var CONFIG_URI = 'http://vieju.net/misato/pebbleWear/configuration.php';
+var GOOGLE_API_KEY = 'AIzaSyADXDNNK8F-Q6tucJRzx0ecFB-yQe1k-gM';
+
+// Get the next Google Calendar event
 function getCalendarData(){
-  var today = new Date();
-  var offset = today.getTimezoneOffset();
-  var hours_offset = Math.abs(offset) / 60;
-  var hours = '' + hours_offset;
-  if (hours_offset < 10) {
-    hours = '0' + hours_offset;
-  }
+	use_access_token(function(access_token) {
+         // use Google Calendar or whatever here...
+		  var today = new Date();
+		  var offset = today.getTimezoneOffset();
+		  var hours_offset = Math.abs(offset) / 60;
+		  var hours = '' + hours_offset;
+		  if (hours_offset < 10) {
+			hours = '0' + hours_offset;
+		  }
 
-  var dateString = today.toISOString();
-  var readableDate = dateString.substring(0, dateString.indexOf('.')) + "+"+ hours + ":00";
+		  var dateString = today.toISOString();
+		  var eventMinDate = dateString.substring(0, dateString.indexOf('.')) + "+"+ hours + ":00";
 
-  console.log(readableDate);
+		  var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/primary/events?orderBy=startTime&maxResults=1&timeMin="
+		  							+ encodeURIComponent(eventMinDate) +"&key="+GOOGLE_API_KEY;
+		 	
+		  
+		  xhrRequest(google_calendar_url, 'GET', 
+		    function(responseText) {
+				var events = JSON.parse(responseText);
+				var nextEvent = events.items[0];
+				var event_info = {
+					'KEY_NAME_EVENT' : nextEvent.summary,
+					'KEY_TIME_EVENT' : nextEvent.start.datetime
+				}
+				sendMessageToApp(event_info);
+			}
+		 );
+		
+   	//DATE=2015-06-16T10%3A13%3A15%2B02%3A00
+	//GET https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin={DATE}&key={YOUR_API_KEY}
+    });
 }
 
-// Second part of Google auth flow
-function resolve_access_token(code) {
-	var client_id = '1000865298828-ee7o3g9jsdimltbk9futjt6pp13vaav4.apps.googleusercontent.com';
-	var client_secret = 'QtGvlFxQGpdshPoqaiXS_gOD';
-	var redirect_uri = 'http://vieju.net/misato/pebbleWear/token.html';
-	
-	var url = 'https://accounts.google.com/o/oauth2/token?code='+encodeURIComponent(code)+'&client_id='+client_id+'&client_secret='+client_secret+'&redirect_uri='+redirect_uri +'&grant_type=authorization_code';
-	var db = window.localStorage;
+// Retrieves the refresh_token and access_token.
+// - code - the authorization code from Google.
+function resolve_tokens(code) {
+    var req = new XMLHttpRequest();
+    req.open("POST", "https://accounts.google.com/o/oauth2/token", true);
+    req.onload = function(e) {
+        var db = window.localStorage;
+        if (req.readyState == 4 && req.status == 200) {
+            var result = JSON.parse(req.responseText);
 
-	xhrRequest(url, 'POST', 
-	    function(responseText) {
-			var result = JSON.parse(responseText);
-			if (result.refresh_token && result.access_token){
-				db.setItem("refresh_token", result.refresh_token);
-				db.setItem("access_token", result.access_token);
-				return;
-			}
-			else {
-				db.removeItem("code");
-			}
-		}
-	);
-	
-	getCalendarData();	
+            if (result.refresh_token && result.access_token) {
+                db.setItem("refresh_token", result.refresh_token);
+                db.setItem("access_token", result.access_token);
+
+                return;
+            }
+        }
+
+        db.removeItem("code");
+        db.setItem("code_error", "Unable to verify the your Google authentication.");
+    };
+    req.send("code="+encodeURIComponent(params.code)
+            +"&client_id="+GOOGLE_CLIENT_ID
+            +"&client_secret="+GOOGLE_CLIENT_SECRET
+            +"&redirect_uri="+GOOGLE_REDIRECT_TOKEN_URI
+            +"&grant_type=authorization_code");
 }
+
+// Runs some code after validating and possibly refreshing the access_token.
+// - code - code to run with the access_token, called like code(access_token)
+function use_access_token(code) {
+    var db = window.localStorage;
+    var refresh_token = db.getItem("refresh_token");
+    var access_token = db.getItem("access_token");
+
+    if (!refresh_token) return;
+
+    valid_token(access_token, code, function() {
+        refresh_access_token(refresh_token, code)
+    });
+}
+
+// Validates the access token.
+// - access_token - the access_token to validate
+// - good - the code to run when the access_token is good, run like good(access_token)
+// - bad - the code to run when the access_token is expired, run like bad()
+function valid_token(access_token, good, bad) {
+    var req = new XMLHttpRequest();
+    req.open("https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=" + access_token, true);
+    req.onload = function(e) {
+        if (req.readyState == 4 && req.status == 200) {
+            var result = JSON.parse(req.responseText);
+
+            if (result.audience != GOOGLE_CLIENT_ID) {
+                var db = window.localStorage;
+                db.removeItem("code");
+                db.removeItem("access_token");
+                db.removeItem("refresh_token");
+                db.setItem("code_error", "There was an error validating your Google Authentication. Please re-authorize access to your account.");
+                return;
+            }
+
+            good(access_token);
+        }
+
+        bad();
+    };
+    req.send(null);
+}
+
+// Refresh a stale access_token.
+// - refresh_token - the refresh_token to use to retreive a new access_token
+// - code - code to run with the new access_token, run like code(access_token)
+function refresh_access_token(refresh_token, code) {
+    var req = new XMLHttpRequest();
+    req.open("POST", "https://accounts.google.com/o/oauth2/token", true);
+    req.onload = function(e) {
+        if (req.readyState == 4 && req.status == 200) {
+            var result = JSON.parse(req.responseText);
+
+            if (result.access_token) {
+                var db = window.localStorage;
+                db.setItem("access_token", result.access_token);
+                code(result.access_token);
+            }
+        }
+    };
+    req.send("refresh_token="+encodeURIComponent(refresh_token)
+            +"&client_id="+GOOGLE_CLIENT_ID,
+            +"&client_secret="+GOOGLE_CLIENT_SECRET,
+            +"&grant_type=refresh_token");
+}
+
+// When you click on Settings in Pebble's phone app. Go to the configuration.html page.
+function show_configuration() {
+    var db = window.localStorage;
+    var code = db.getItem("code");
+    var code_error = db.getItem("code_error");
+    db.removeItem("code_error");
+
+    var json = JSON.stringify({
+        "code": code,
+        "code_error": code_error
+    });
+
+    Pebble.openURL(CONFIG_URL + json);
+}
+
+// When you click Save on the configuration.html page, recieve the configuration response here.
+function webview_closed(e) {
+    var json = e.response;
+    var config = JSON.parse(json);
+
+    var code = config.code;
+
+    var db = window.localStorage;
+    var old_code = db.getItem("code");
+    if (old_code != code) {
+        db.setItem("code", code);
+        db.removeItem("refresh_token");
+        db.removeItem("access_token");
+    }
+
+    resolve_tokens(code);
+}
+
+// Setup the configuration events
+Pebble.addEventListener("showConfiguration", show_configuration);
+Pebble.addEventListener("webviewclosed", webview_closed);
+
+
 
 // Listen for when the watchface is opened
 Pebble.addEventListener('ready', 
@@ -115,28 +254,6 @@ Pebble.addEventListener('ready',
 
     // Get the initial weather
     getWeather();
-    getCalendarData();
+    //getCalendarData();
   }
 );
-
-// Show configuration page
-Pebble.addEventListener('showConfiguration', function(e) {
-  Pebble.openURL('http://vieju.net/misato/pebbleWear/configuration.php');
-});
-
-// Configuration closed
-Pebble.addEventListener('webviewclosed',
-  function(e) {
-    console.log('Configuration window returned: ' + e.response);
-	var config = JSON.parse(e.response);
-    var code = config.code;
-	var db = window.localStorage;
-	var old_code = db.getItem("code");
-	if (code != old_code) {
-		db.setItem("code", code);
-		resolve_access_token(code);
-	}
-  }
-);
-
-

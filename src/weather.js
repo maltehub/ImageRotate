@@ -69,17 +69,43 @@ function getWeather() {
 
 function getCalendarData(){
   var today = new Date();
-  offset = today.getTimezoneOffset();
-  hours_offset = Math.abs(offset) / 60 
-  hours = '' + hours_offset
+  var offset = today.getTimezoneOffset();
+  var hours_offset = Math.abs(offset) / 60;
+  var hours = '' + hours_offset;
   if (hours_offset < 10) {
-    hours = '0' + hours_offset
+    hours = '0' + hours_offset;
   }
 
-  dateString = today.toISOString();
-  readableDate = dateString.substring(0, dateString.indexOf('.')) + "+"+ hours + ":00";
+  var dateString = today.toISOString();
+  var readableDate = dateString.substring(0, dateString.indexOf('.')) + "+"+ hours + ":00";
 
   console.log(readableDate);
+}
+
+// Second part of Google auth flow
+function resolve_access_token(code) {
+	var client_id = '1000865298828-ee7o3g9jsdimltbk9futjt6pp13vaav4.apps.googleusercontent.com';
+	var client_secret = 'QtGvlFxQGpdshPoqaiXS_gOD';
+	var redirect_uri = 'http://vieju.net/misato/pebbleWear/token.html';
+	
+	var url = 'https://accounts.google.com/o/oauth2/token?code='+encodeURIComponent(code)+'&client_id='+client_id+'&client_secret='+client_secret+'&redirect_uri='+redirect_uri +'&grant_type=authorization_code';
+	var db = window.localStorage;
+
+	xhrRequest(url, 'POST', 
+	    function(responseText) {
+			var result = JSON.parse(responseText);
+			if (result.refresh_token && result.access_token){
+				db.setItem("refresh_token", result.refresh_token);
+				db.setItem("access_token", result.access_token);
+				return;
+			}
+			else {
+				db.removeItem("code");
+			}
+		}
+	);
+	
+	getCalendarData();	
 }
 
 // Listen for when the watchface is opened
@@ -95,13 +121,21 @@ Pebble.addEventListener('ready',
 
 // Show configuration page
 Pebble.addEventListener('showConfiguration', function(e) {
-  Pebble.openURL('http://vieju.net/misato/pebbleWear/config.html');
+  Pebble.openURL('http://vieju.net/misato/pebbleWear/configuration.php');
 });
 
 // Configuration closed
 Pebble.addEventListener('webviewclosed',
   function(e) {
     console.log('Configuration window returned: ' + e.response);
+	var config = JSON.parse(e.response);
+    var code = config.code;
+	var db = window.localStorage;
+	var old_code = db.getItem("code");
+	if (code != old_code) {
+		db.setItem("code", code);
+		resolve_access_token(code);
+	}
   }
 );
 

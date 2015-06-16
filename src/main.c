@@ -11,10 +11,19 @@ static TextLayer *s_date_layer;
 static TextLayer *s_weather_layer;
 static GBitmap *s_bitmap;
 static BitmapLayer *s_bitmap_layer;
+// Event vars
+static GFont s_res_gothic_14;
+static TextLayer *s_textlayer_time;
+static TextLayer *s_textlayer_event_title;
+static TextLayer *s_textlayer_event_time;
+
 // Store incoming information
 static char temperature_buffer[8];
 static char conditions_buffer[32];
 static char weather_layer_buffer[32];
+static char event_name_buffer[64];
+static char event_time_buffer[16];
+
 static TextLayer *s_battery_layer;
 
 static void handle_battery(BatteryChargeState charge_state) {
@@ -107,6 +116,26 @@ static void main_window_load(Window *window) {
   text_layer_set_text_alignment(s_battery_layer, GTextAlignmentLeft);
   text_layer_set_text(s_battery_layer, "100%");
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_battery_layer));
+	
+  // Load font 
+  s_res_gothic_14 = fonts_get_system_font(FONT_KEY_GOTHIC_14);
+  // Time to the event
+  s_textlayer_time = text_layer_create(GRect(8, 98, 125, 17));
+  text_layer_set_text(s_textlayer_time, "10 min");
+  layer_add_child(window_get_root_layer(window), (Layer *)s_textlayer_time);
+  
+  // Title of the event
+  s_textlayer_event_title = text_layer_create(GRect(8, 113, 127, 20));
+  text_layer_set_text(s_textlayer_event_title, "Picnic with friends");
+  text_layer_set_font(s_textlayer_event_title, s_res_gothic_14);
+  layer_add_child(window_get_root_layer(window), (Layer *)s_textlayer_event_title);
+  
+  // Time and place (or other info)
+  s_textlayer_event_time = text_layer_create(GRect(8, 136, 125, 26));
+  text_layer_set_text(s_textlayer_event_time, "12:30 PM");
+  text_layer_set_font(s_textlayer_event_time, s_res_gothic_14);
+  layer_add_child(window_get_root_layer(window), (Layer *)s_textlayer_event_time);
+ 
 }
 
 static void main_window_unload(Window *window) {
@@ -117,6 +146,9 @@ static void main_window_unload(Window *window) {
     gbitmap_destroy(s_bitmap);
     text_layer_destroy(s_weather_layer);
     text_layer_destroy(s_battery_layer);
+    text_layer_destroy(s_textlayer_time);
+    text_layer_destroy(s_textlayer_event_title);
+    text_layer_destroy(s_textlayer_event_time);
     battery_state_service_unsubscribe();
 }
 
@@ -142,6 +174,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   // Read first item
   Tuple *t = dict_read_first(iterator);
 
+	
   // For all items
   while(t != NULL) {
     // Which key was received?
@@ -153,8 +186,12 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", t->value->cstring);
         break;
       case KEY_NAME_EVENT:
+		snprintf(event_name_buffer, sizeof(event_name_buffer), "%s", t->value->cstring);
+		text_layer_set_text(s_textlayer_event_title, event_name_buffer);
         break;
       case KEY_TIME_EVENT:
+		snprintf(event_time_buffer, sizeof(event_time_buffer), "%s", t->value->cstring);
+		text_layer_set_text(s_textlayer_event_time, event_time_buffer);
         break;
       default:
         APP_LOG(APP_LOG_LEVEL_ERROR, "Key %d not recognized!", (int)t->key);
@@ -167,7 +204,6 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   // Assemble full string and display
   snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s, %s", conditions_buffer, temperature_buffer);
   text_layer_set_text(s_weather_layer, weather_layer_buffer);
-
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {

@@ -76,7 +76,7 @@ function getWeather() {
 var GOOGLE_CLIENT_ID = '1000865298828-ee7o3g9jsdimltbk9futjt6pp13vaav4.apps.googleusercontent.com';
 var GOOGLE_CLIENT_SECRET = 'QtGvlFxQGpdshPoqaiXS_gOD';
 var GOOGLE_REDIRECT_TOKEN_URI = 'http://vieju.net/misato/pebbleWear/configuration.php';
-var CONFIG_URI = 'http://vieju.net/misato/pebbleWear/configuration.php';
+var CONFIG_URL = 'http://vieju.net/misato/pebbleWear/configuration.php';
 var GOOGLE_API_KEY = 'AIzaSyADXDNNK8F-Q6tucJRzx0ecFB-yQe1k-gM';
 
 // Get the next Google Calendar event

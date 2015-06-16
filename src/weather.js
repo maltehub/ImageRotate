@@ -220,7 +220,7 @@ function show_configuration() {
         "code_error": code_error
     });
 
-    Pebble.openURL(CONFIG_URL + json);
+    Pebble.openURL(CONFIG_URL);
 }
 
 // When you click Save on the configuration.html page, recieve the configuration response here.
@@ -254,6 +254,6 @@ Pebble.addEventListener('ready',
 
     // Get the initial weather
     getWeather();
-    //getCalendarData();
+    getCalendarData();
   }
 );

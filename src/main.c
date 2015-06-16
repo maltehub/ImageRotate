@@ -1,6 +1,9 @@
 #include <pebble.h>
 #define KEY_TEMPERATURE 0
 #define KEY_CONDITIONS 1
+#define KEY_NAME_EVENT 2
+#define KEY_TIME_EVENT 3
+
   
 static Window *s_main_window;
 static TextLayer *s_time_layer;
@@ -148,6 +151,10 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         break;
       case KEY_CONDITIONS:
         snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", t->value->cstring);
+        break;
+      case KEY_NAME_EVENT:
+        break;
+      case KEY_TIME_EVENT:
         break;
       default:
         APP_LOG(APP_LOG_LEVEL_ERROR, "Key %d not recognized!", (int)t->key);

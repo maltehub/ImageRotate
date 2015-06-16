@@ -1,14 +1,16 @@
 {
     "appKeys": {
+        "KEY_TEMPERATURE": 0,
         "KEY_CONDITIONS": 1,
-        "KEY_TEMPERATURE": 0
+        "KEY_NAME_EVENT" : 2,
+        "KEY_TIME_EVENT" : 3
     },
     "capabilities": [
         "location", 
         "configurable"
     ],
     "companyName": "mkdesign",
-    "longName": "Tutorial 1",
+    "longName": "PebbleWear",
     "projectType": "native",
     "resources": {
         "media": [
@@ -20,9 +22,8 @@
         ]
     },
     "sdkVersion": "3",
-    "shortName": "Tutorial 1",
+    "shortName": "PebbleWear",
     "targetPlatforms": [
-        "aplite",
         "basalt"
     ],
     "uuid": "6eb14645-3021-44f2-a4f4-12e7673d2293",

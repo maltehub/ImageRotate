@@ -98,22 +98,43 @@ var GOOGLE_REDIRECT_TOKEN_URI = 'http://vieju.net/misato/pebbleWear/configuratio
 var CONFIG_URL = 'http://vieju.net/misato/pebbleWear/configuration.php';
 var GOOGLE_API_KEY = 'AIzaSyADXDNNK8F-Q6tucJRzx0ecFB-yQe1k-gM';
 
+// Util Date functions
+
+// Parses a Date in the GCalendar readable format to a noraml Date object
+// From: "2015-06-19T13:00:00+02:00" to 19 June 2015 at 13:00 (GMT+2)
+function stringToDate(dateString){
+	var dateStr = dateString.replace(/\D/g," ");
+	var components = dateStr.split(" ");
+	// modify month between 1 based ISO 8601 and zero based Date
+	components[1]--;
+	var date = new Date(Date.UTC(components[0],components[1],components[2],components[3],components[4],components[5]));
+	return date;
+}
+
+// Returns a Google Calendar date to be used in the paramether of the GCalendar events call
+// For example if today's date is: 19 June 2015 at 13:00 (GMT+2)
+// It will return: "2015-06-19T13:00:00+02:00"
+function dateToString(date) {
+	var offset = date.getTimezoneOffset();
+	var hours_offset = Math.abs(offset) / 60;
+	var hours = '' + hours_offset;
+	if (hours_offset < 10) {
+		hours = '0' + hours_offset;
+	}
+
+	var dateString = date.toISOString();
+	var gCalendarDate = dateString.substring(0, dateString.indexOf('.')) + "+"+ hours + ":00";
+	return gCalendarDate;
+}
+
 // Get the next Google Calendar event
 function getCalendarData(){
 	use_access_token(function(access_token) {
 		var today = new Date();
-		var offset = today.getTimezoneOffset();
-		var hours_offset = Math.abs(offset) / 60;
-		var hours = '' + hours_offset;
-		if (hours_offset < 10) {
-			hours = '0' + hours_offset;
-		}
-
-		var dateString = today.toISOString();
-		var eventMinDate = dateString.substring(0, dateString.indexOf('.')) + "+"+ hours + ":00";
-		var calendar_id = encodeURIComponent("misato.vk@gmail.com");
+		var eventMinDate = dateToString(today);
+		var calendar_id = encodeURIComponent("primary");
 		//var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events?orderBy=startTime&maxResults=1&timeMin="+encodeURIComponent(eventMinDate) +"&key="+GOOGLE_API_KEY;
-		var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events?timeMin="+encodeURIComponent(eventMinDate) +"&key="+GOOGLE_API_KEY;
+		var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events?timeMin="+encodeURIComponent(eventMinDate)+"&maxResults=1"+"&key="+GOOGLE_API_KEY;
 	
 		var xhr = new XMLHttpRequest();
 		xhr.onload = function () {
@@ -123,9 +144,13 @@ function getCalendarData(){
 				
 				if (events && events.items && events.items.length > 0){
 					var nextEvent = events.items[0];
+					// Parse the Date String into readable format
+					//var eventDate = stringToDate(nextEvent.start.datetime);
+					//var time = eventDate.toTimeString();
+					console.log("time of the event: "+nextEvent.start.datetime);
 					var event_info = {
 						'KEY_NAME_EVENT' : nextEvent.summary,
-						'KEY_TIME_EVENT' : nextEvent.start.datetime
+						'KEY_TIME_EVENT' : ""
 					};
 					sendMessageToApp(event_info);
 				}
@@ -150,21 +175,27 @@ function getCalendarData(){
 // Retrieves the refresh_token and access_token.
 // - code - the authorization code from Google.
 function resolve_tokens(code) {
-  var url = "https://accounts.google.com/o/oauth2/token?code="+encodeURIComponent(code)+"&client_id="+GOOGLE_CLIENT_ID+"&client_secret="+GOOGLE_CLIENT_SECRET+"&redirect_uri="+GOOGLE_REDIRECT_TOKEN_URI+"&grant_type=authorization_code";
-  xhrRequest(url, "POST", function(responseText) {
-        var result = JSON.parse(responseText);
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", "https://accounts.google.com/o/oauth2/token", true);
+	console.log("Calling resolve_token");
+	xhr.onload = function (e) {
+		if (xhr.readyState == 4 && xhr.status == 200) {
+			var result = JSON.parse(xhr.responseText);
+			console.log("Resolve_token result: "+result);
+			if (result.refresh_token && result.access_token) {
+				db.setItem("refresh_token", result.refresh_token);
+				db.setItem("access_token", result.access_token);
 
-        if (result.refresh_token && result.access_token) {
-            db.setItem("refresh_token", result.refresh_token);
-            db.setItem("access_token", result.access_token);
+				getCalendarData();
+			}
+		} else {
+			console.log("Error resolve_token" + xhr.responseText);
+			clean_database();
+			db.setItem("code_error", "Unable to verify the your Google authentication.");
+		}
+	};
 
-            getCalendarData();
-        }
-  }, function(request){
-        clean_database();
-        db.setItem("code_error", "Unable to verify the your Google authentication.");
-  });
-
+	xhr.send("code="+encodeURIComponent(code)+"&client_id="+GOOGLE_CLIENT_ID+"&client_secret="+GOOGLE_CLIENT_SECRET+"&redirect_uri="+GOOGLE_REDIRECT_TOKEN_URI+"&grant_type=authorization_code");
 }
 
 // Runs some code after validating and possibly refreshing the access_token.
@@ -205,18 +236,27 @@ function valid_token(access_token, success, error) {
 // - refresh_token - the refresh_token to use to retreive a new access_token
 // - success - code to run with the new access_token, run like success(access_token)
 function refresh_access_token(refresh_token, success) {
-  var url = "https://accounts.google.com/o/oauth2/token?refresh_token="+encodeURIComponent(refresh_token)+"&client_id="+GOOGLE_CLIENT_ID+ "&client_secret="+GOOGLE_CLIENT_SECRET+ "&grant_type=refresh_token";
-
-    xhrRequest(url, "POST", function(responseText) {
-            var result = JSON.parse(responseText);
-
+	var xhr = new XMLHttpRequest();
+	xhr.open("POST", "https://accounts.google.com/o/oauth2/token", true);
+	console.log("Calling refresh_access_token");
+	xhr.onload = function (e) {
+		if (xhr.readyState == 4 && xhr.status == 200) {
+			var result = JSON.parse(xhr.responseText);
+			console.log("Refresh_access_token result: "+result);
             if (result.access_token) {
                 db.setItem("access_token", result.access_token);
                 success(result.access_token);
             }
-    }, function(request) {
-          db.setItem("code_error", "Error refreshing access_token");
-    });
+		} else {
+			console.log("Error refreshing access_token");
+			clean_database();
+			db.setItem("code_error", "Error refreshing access_token");
+		}
+	};
+	xhr.send("refresh_token="+encodeURIComponent(refresh_token)+
+			"&client_id="+GOOGLE_CLIENT_ID+
+			"&client_secret="+GOOGLE_CLIENT_SECRET+
+			"&grant_type=refresh_token");
 }
 
 // When you click on Settings in Pebble's phone app. Go to the configuration.html page.
@@ -254,12 +294,7 @@ Pebble.addEventListener('ready',
 
     // Get the initial weather
     getWeather();
-    if (!db.getItem("code") && !db.getItem("access_token")) {
-      show_configuration();
-    }
-    else {
-      getCalendarData();
-    }
+	getCalendarData();
 
   }
 );

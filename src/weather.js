@@ -100,13 +100,22 @@ function getCalendarData(){
 		  
 		  xhrRequest(google_calendar_url, 'GET', 
 		    function(responseText) {
+				console.log(responseText);
 				var events = JSON.parse(responseText);
-				var nextEvent = events.items[0];
-				var event_info = {
-					'KEY_NAME_EVENT' : nextEvent.summary,
-					'KEY_TIME_EVENT' : nextEvent.start.datetime
+				
+				if (events && events.items && events.items.length > 0){
+					var nextEvent = events.items[0];
+					var event_info = {
+						'KEY_NAME_EVENT' : nextEvent.summary,
+						'KEY_TIME_EVENT' : nextEvent.start.datetime
+					};
+					sendMessageToApp(event_info);
 				}
-				sendMessageToApp(event_info);
+				else {
+					//TODO change this to more readable error
+					sendMessageToApp({'KEY_NAME_EVENT' : 'No events'});
+				}
+
 			}
 		 );
 		
@@ -129,14 +138,14 @@ function resolve_tokens(code) {
                 db.setItem("refresh_token", result.refresh_token);
                 db.setItem("access_token", result.access_token);
 
-                return;
+                getCalendarData();
             }
         }
 
         db.removeItem("code");
         db.setItem("code_error", "Unable to verify the your Google authentication.");
     };
-    req.send("code="+encodeURIComponent(params.code)
+    req.send("code="+encodeURIComponent(code)
             +"&client_id="+GOOGLE_CLIENT_ID
             +"&client_secret="+GOOGLE_CLIENT_SECRET
             +"&redirect_uri="+GOOGLE_REDIRECT_TOKEN_URI
@@ -162,27 +171,23 @@ function use_access_token(code) {
 // - good - the code to run when the access_token is good, run like good(access_token)
 // - bad - the code to run when the access_token is expired, run like bad()
 function valid_token(access_token, good, bad) {
-    var req = new XMLHttpRequest();
-    req.open("https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=" + access_token, true);
-    req.onload = function(e) {
-        if (req.readyState == 4 && req.status == 200) {
-            var result = JSON.parse(req.responseText);
+	var url = "https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=" + access_token;
+	xhrRequest(url, 'GET', 
+		    function(responseText) {
+				var result = JSON.parse(responseText);
 
-            if (result.audience != GOOGLE_CLIENT_ID) {
-                var db = window.localStorage;
-                db.removeItem("code");
-                db.removeItem("access_token");
-                db.removeItem("refresh_token");
-                db.setItem("code_error", "There was an error validating your Google Authentication. Please re-authorize access to your account.");
-                return;
-            }
+				if (result.audience != GOOGLE_CLIENT_ID) {
+					var db = window.localStorage;
+					db.removeItem("code");
+					db.removeItem("access_token");
+					db.removeItem("refresh_token");
+					db.setItem("code_error", "There was an error validating your Google Authentication. Please re-authorize access to your account.");
+					return;
+				}
 
-            good(access_token);
-        }
-
-        bad();
-    };
-    req.send(null);
+				good(access_token);
+			}
+		);
 }
 
 // Refresh a stale access_token.

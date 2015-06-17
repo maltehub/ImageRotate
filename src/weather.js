@@ -7,7 +7,7 @@ var xhrRequest = function (url, type, success, error) {
         success(this.responseText);
     }
     else {
-      console.log("error: "+ this);
+      console.log("error: "+ this.responseText);
       error(this);
     }
   };
@@ -15,7 +15,7 @@ var xhrRequest = function (url, type, success, error) {
   xhr.send();
 };
 
-var db = window.localStorage
+var db = window.localStorage;
 
 function clean_database(){
   // Clean the database
@@ -101,26 +101,25 @@ var GOOGLE_API_KEY = 'AIzaSyADXDNNK8F-Q6tucJRzx0ecFB-yQe1k-gM';
 // Get the next Google Calendar event
 function getCalendarData(){
 	use_access_token(function(access_token) {
-         // use Google Calendar or whatever here...
-		  var today = new Date();
-		  var offset = today.getTimezoneOffset();
-		  var hours_offset = Math.abs(offset) / 60;
-		  var hours = '' + hours_offset;
-		  if (hours_offset < 10) {
+		var today = new Date();
+		var offset = today.getTimezoneOffset();
+		var hours_offset = Math.abs(offset) / 60;
+		var hours = '' + hours_offset;
+		if (hours_offset < 10) {
 			hours = '0' + hours_offset;
-		  }
+		}
 
-		  var dateString = today.toISOString();
-		  var eventMinDate = dateString.substring(0, dateString.indexOf('.')) + "+"+ hours + ":00";
-
-		  var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/primary/events?orderBy=startTime&maxResults=1&timeMin="
-		  							+ encodeURIComponent(eventMinDate) +"&key="+GOOGLE_API_KEY;
-		 	
-		  
-		  xhrRequest(google_calendar_url, 'GET', 
-		    function(responseText) {
-				console.log(responseText);
-				var events = JSON.parse(responseText);
+		var dateString = today.toISOString();
+		var eventMinDate = dateString.substring(0, dateString.indexOf('.')) + "+"+ hours + ":00";
+		var calendar_id = encodeURIComponent("misato.vk@gmail.com");
+		//var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events?orderBy=startTime&maxResults=1&timeMin="+encodeURIComponent(eventMinDate) +"&key="+GOOGLE_API_KEY;
+		var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events?timeMin="+encodeURIComponent(eventMinDate) +"&key="+GOOGLE_API_KEY;
+	
+		var xhr = new XMLHttpRequest();
+		xhr.onload = function () {
+			if (this.readyState == 4 && this.status == 200) {
+				console.log("Success: "+ this.responseText);
+				var events = JSON.parse(this.responseText);
 				
 				if (events && events.items && events.items.length > 0){
 					var nextEvent = events.items[0];
@@ -134,26 +133,26 @@ function getCalendarData(){
 					//TODO change this to more readable error
 					sendMessageToApp({'KEY_NAME_EVENT' : 'No events'});
 				}
-
 			}
-		 ,null);
+			else {
+				console.log("error: "+ this.responseText);
+			}
+		};
+		xhr.open("GET", google_calendar_url);
+		xhr.setRequestHeader("Authorization","Bearer "+db.getItem("access_token"));
+		xhr.send();
 		
-   	//DATE=2015-06-16T10%3A13%3A15%2B02%3A00
-	 //GET https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin={DATE}&key={YOUR_API_KEY}
+		//DATE=2015-06-16T10%3A13%3A15%2B02%3A00
+		//GET https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin={DATE}&key={YOUR_API_KEY}
     });
 }
 
 // Retrieves the refresh_token and access_token.
 // - code - the authorization code from Google.
 function resolve_tokens(code) {
-  url = "https://accounts.google.com/o/oauth2/token?" 
-          + "code="+encodeURIComponent(code)
-            +"&client_id="+GOOGLE_CLIENT_ID
-            +"&client_secret="+GOOGLE_CLIENT_SECRET
-            +"&redirect_uri="+GOOGLE_REDIRECT_TOKEN_URI
-            +"&grant_type=authorization_code";
+  var url = "https://accounts.google.com/o/oauth2/token?code="+encodeURIComponent(code)+"&client_id="+GOOGLE_CLIENT_ID+"&client_secret="+GOOGLE_CLIENT_SECRET+"&redirect_uri="+GOOGLE_REDIRECT_TOKEN_URI+"&grant_type=authorization_code";
   xhrRequest(url, "POST", function(responseText) {
-        var result = JSON.parse(req.responseText);
+        var result = JSON.parse(responseText);
 
         if (result.refresh_token && result.access_token) {
             db.setItem("refresh_token", result.refresh_token);
@@ -164,7 +163,7 @@ function resolve_tokens(code) {
   }, function(request){
         clean_database();
         db.setItem("code_error", "Unable to verify the your Google authentication.");
-  })
+  });
 
 }
 
@@ -177,7 +176,7 @@ function use_access_token(success) {
     if (!refresh_token) return;
 
     valid_token(access_token, success, function() {
-        refresh_access_token(refresh_token, success)
+        refresh_access_token(refresh_token, success);
     });
 }
 
@@ -187,8 +186,7 @@ function use_access_token(success) {
 // - bad - the code to run when the access_token is expired, run like bad()
 function valid_token(access_token, success, error) {
 	var url = "https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=" + access_token;
-	xhrRequest(url, 'GET', 
-		    function(responseText) {
+	xhrRequest(url, 'GET', function(responseText) {
 				var result = JSON.parse(responseText);
 
 				if (result.audience != GOOGLE_CLIENT_ID) {
@@ -200,22 +198,17 @@ function valid_token(access_token, success, error) {
 				}
 
 				success(access_token);
-			}
-		, error);
+			},error);
 }
 
 // Refresh a stale access_token.
 // - refresh_token - the refresh_token to use to retreive a new access_token
 // - success - code to run with the new access_token, run like success(access_token)
 function refresh_access_token(refresh_token, success) {
-  var url = "https://accounts.google.com/o/oauth2/token?"
-            + "refresh_token="+encodeURIComponent(refresh_token)
-            +"&client_id="+GOOGLE_CLIENT_ID,
-            +"&client_secret="+GOOGLE_CLIENT_SECRET,
-            +"&grant_type=refresh_token";
+  var url = "https://accounts.google.com/o/oauth2/token?refresh_token="+encodeURIComponent(refresh_token)+"&client_id="+GOOGLE_CLIENT_ID+ "&client_secret="+GOOGLE_CLIENT_SECRET+ "&grant_type=refresh_token";
 
     xhrRequest(url, "POST", function(responseText) {
-            var result = JSON.parse(req.responseText);
+            var result = JSON.parse(responseText);
 
             if (result.access_token) {
                 db.setItem("access_token", result.access_token);
@@ -254,7 +247,6 @@ Pebble.addEventListener("showConfiguration", show_configuration);
 Pebble.addEventListener("webviewclosed", webview_closed);
 
 
-
 // Listen for when the watchface is opened
 Pebble.addEventListener('ready', 
   function(e) {
@@ -262,7 +254,7 @@ Pebble.addEventListener('ready',
 
     // Get the initial weather
     getWeather();
-    if (!db.getItem("code") && !db.getItem("access_token") {
+    if (!db.getItem("code") && !db.getItem("access_token")) {
       show_configuration();
     }
     else {

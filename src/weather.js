@@ -7,6 +7,9 @@ var xhrRequest = function (url, type, callback) {
   xhr.send();
 };
 
+var db = window.localStorage
+
+
 function sendMessageToApp(dictionary){
       Pebble.sendAppMessage(dictionary,
         function(e) {
@@ -130,7 +133,6 @@ function resolve_tokens(code) {
     var req = new XMLHttpRequest();
     req.open("POST", "https://accounts.google.com/o/oauth2/token", true);
     req.onload = function(e) {
-        var db = window.localStorage;
         if (req.readyState == 4 && req.status == 200) {
             var result = JSON.parse(req.responseText);
 
@@ -155,7 +157,6 @@ function resolve_tokens(code) {
 // Runs some code after validating and possibly refreshing the access_token.
 // - code - code to run with the access_token, called like code(access_token)
 function use_access_token(code) {
-    var db = window.localStorage;
     var refresh_token = db.getItem("refresh_token");
     var access_token = db.getItem("access_token");
 
@@ -177,7 +178,6 @@ function valid_token(access_token, good, bad) {
 				var result = JSON.parse(responseText);
 
 				if (result.audience != GOOGLE_CLIENT_ID) {
-					var db = window.localStorage;
 					db.removeItem("code");
 					db.removeItem("access_token");
 					db.removeItem("refresh_token");
@@ -201,7 +201,6 @@ function refresh_access_token(refresh_token, code) {
             var result = JSON.parse(req.responseText);
 
             if (result.access_token) {
-                var db = window.localStorage;
                 db.setItem("access_token", result.access_token);
                 code(result.access_token);
             }
@@ -215,15 +214,11 @@ function refresh_access_token(refresh_token, code) {
 
 // When you click on Settings in Pebble's phone app. Go to the configuration.html page.
 function show_configuration() {
-    var db = window.localStorage;
-    var code = db.getItem("code");
-    var code_error = db.getItem("code_error");
+    // Clean the database
+    db.removeItem("code");
+    db.removeItem("access_token");
+    db.removeItem("refresh_token");
     db.removeItem("code_error");
-
-    var json = JSON.stringify({
-        "code": code,
-        "code_error": code_error
-    });
 
     Pebble.openURL(CONFIG_URL);
 }
@@ -234,8 +229,6 @@ function webview_closed(e) {
     var config = JSON.parse(json);
 
     var code = config.code;
-
-    var db = window.localStorage;
     var old_code = db.getItem("code");
     if (old_code != code) {
         db.setItem("code", code);
@@ -259,6 +252,12 @@ Pebble.addEventListener('ready',
 
     // Get the initial weather
     getWeather();
-    getCalendarData();
+    if (!db.getItem("code") && !db.getItem("access_token") {
+      show_configuration();
+    }
+    else {
+      getCalendarData();
+    }
+
   }
 );

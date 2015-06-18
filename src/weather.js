@@ -145,12 +145,12 @@ function getCalendarData(){
 				if (events && events.items && events.items.length > 0){
 					var nextEvent = events.items[0];
 					// Parse the Date String into readable format
-					//var eventDate = stringToDate(nextEvent.start.datetime);
-					//var time = eventDate.toTimeString();
-					console.log("time of the event: "+nextEvent.start.datetime);
+					var eventDate = stringToDate(nextEvent.start.dateTime);
+					var time = eventDate.toTimeString();
+					console.log("time of the event: "+time);
 					var event_info = {
 						'KEY_NAME_EVENT' : nextEvent.summary,
-						'KEY_TIME_EVENT' : ""
+						'KEY_TIME_EVENT' : time
 					};
 					sendMessageToApp(event_info);
 				}

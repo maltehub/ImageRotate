@@ -1,19 +1,62 @@
-var xhrRequest = function (url, type, success, error) {
-  console.log("Sending request to: "+url);
-  var xhr = new XMLHttpRequest();
-  xhr.onload = function () {
-    if (this.readyState == 4 && this.status == 200) {
-        console.log("Success: "+ this.responseText);
-        success(this.responseText);
-    }
-    else {
-      console.log("error: "+ this.responseText);
-      error(this);
-    }
-  };
-  xhr.open(type, url);
-  xhr.send();
-};
+
+/**
+ * Makes an HTTP request. 
+ * 
+ * @param url - the URL for the request. It doesn't need to have the params concatenated.
+ * @param type - the type: POST or GET (not sure if it will work with PUT and DELETE).
+ * @param params - params for the POST or GET request. If no params, then pass null.
+ * @param header - the header to include in the request. If no header then pass null.
+ *                 It is an array so for a header like: 
+ *                 "Content-type", "application/x-www-form-urlencoded; charset=utf-8"
+ * 					header = ["Content-type", "application/x-www-form-urlencoded; charset=utf-8"];
+ *                  so header[0]  = "Content-type" and header[1] the rest. 
+ * @param success - the success function to execute when the request succeeded. 
+ * @param error - the error function to execute when the request failed. 
+ * 
+ * success and error will return responseText as a param in the function.
+ */
+
+var xhrRequest = function (url, type, params, header, success, error) {
+	console.log("Sending request to: "+url);
+	var request = new XMLHttpRequest();
+	request.onload = function(){
+		if (this.readyState == 4 && this.status == 200) {
+	        console.log("Success: "+ this.responseText);
+	        success(this.responseText);
+		}
+		else {
+			console.log("Error: "+this.responseText);
+			error(this.responseText);
+		}
+	};
+
+	if (header != null) {
+		request.setRequestHeader(header[0], header[1]);
+	}
+
+	paramsString = "";
+	if (params != null) {
+		for (var i = 0; i < params.length; i++) {
+			paramsString += encodeURIComponent(params[i]);
+			if (i < params.length -1){
+				paramsString += "&";
+			}
+		};
+	}
+	if (type == 'POST') {
+		request.open(type, url, true);
+		if (paramsString != "") {
+			request.send(paramsString);
+		}
+	}
+	else {
+		if (paramsString != ""){
+			url += "?" + paramsString;
+		}
+		request.open(type, url);
+		request.send();
+	}
+}
 
 var db = window.localStorage;
 
@@ -29,43 +72,45 @@ function clean_database(){
 function sendMessageToApp(dictionary){
       Pebble.sendAppMessage(dictionary,
         function(e) {
-          console.log('Message sent to Pebble successfully! ' + dictionary);
+          console.log('Message sent to Pebble successfully! ' + JSON.parse(dictionary));
         },
         function(e) {
-          console.log('Error sending message to Pebble! ' + dictionary);
+          console.log('Error sending message to Pebble! ' + JSON.parse(dictionary));
         }
       );
 }
 
 function locationSuccess(pos) {
   // Construct URL
-  var url = 'http://api.openweathermap.org/data/2.5/weather?lat=' +
-      pos.coords.latitude + '&lon=' + pos.coords.longitude;
+  var url = 'http://api.openweathermap.org/data/2.5/weather';
+  var params = ['lat='+pos.coords.latitude,'lon='+pos.coords.longitude];
 
-  // Send request to OpenWeatherMap
-  xhrRequest(url, 'GET', 
-    function(responseText) {
-      // responseText contains a JSON object with weather info
-      var json = JSON.parse(responseText);
+  var success = function(responseText){
+	  	var json = JSON.parse(responseText);
 
-      // Temperature in Kelvin requires adjustment
-      var temperature = Math.round(json.main.temp - 273.15);
-      console.log('Temperature is ' + temperature);
+		// Temperature in Kelvin requires adjustment
+		var temperature = Math.round(json.main.temp - 273.15);
+		console.log('Temperature is ' + temperature);
 
-      // Conditions
-      var conditions = json.weather[0].main;      
-      console.log('Conditions are ' + conditions); 
-          
-      // Assemble dictionary using our keys
-      var dictionary = {
-        'KEY_TEMPERATURE': temperature,
-        'KEY_CONDITIONS': conditions
-      };
-      
-      // Send to Pebble
+		// Conditions
+		var conditions = json.weather[0].main;      
+		console.log('Conditions are ' + conditions); 
+		      
+		  // Assemble dictionary using our keys
+		var dictionary = {
+		   'KEY_TEMPERATURE': temperature,
+		   'KEY_CONDITIONS': conditions
+		};
+		  
+		// Send to Pebble
 		sendMessageToApp(dictionary);
-    }      
-  );
+	};
+
+	var error = function(responseText) {
+		//TODO implement an error state for this
+	};
+
+	xhrRequest(url, "GET", params, null, success, error);
 }
 
 
@@ -90,7 +135,10 @@ function getWeather() {
 }
 
 
-// Google Calendar FUNCTIONS
+// ------------------------- //
+// Google Calendar FUNCTIONS //
+// ------------------------- //
+
 
 var GOOGLE_CLIENT_ID = '1000865298828-ee7o3g9jsdimltbk9futjt6pp13vaav4.apps.googleusercontent.com';
 var GOOGLE_CLIENT_SECRET = 'QtGvlFxQGpdshPoqaiXS_gOD';
@@ -133,40 +181,37 @@ function getCalendarData(){
 		var today = new Date();
 		var eventMinDate = dateToString(today);
 		var calendar_id = encodeURIComponent("primary");
+
+
 		//var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events?orderBy=startTime&maxResults=1&timeMin="+encodeURIComponent(eventMinDate) +"&key="+GOOGLE_API_KEY;
-		var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events?timeMin="+encodeURIComponent(eventMinDate)+"&maxResults=1"+"&key="+GOOGLE_API_KEY;
-	
-		var xhr = new XMLHttpRequest();
-		xhr.onload = function () {
-			if (this.readyState == 4 && this.status == 200) {
-				console.log("Success: "+ this.responseText);
-				var events = JSON.parse(this.responseText);
+		var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events";
+		var params = ["timeMin="+encodeURIComponent(eventMinDate),"maxResults=1","key="+GOOGLE_API_KEY];
+		var header = ["Authorization","Bearer "+db.getItem("access_token")];
+
+		var success = function(responseText){
+			var events = JSON.parse(responseText);
 				
-				if (events && events.items && events.items.length > 0){
-					var nextEvent = events.items[0];
-					// Parse the Date String into readable format
-					var eventDate = stringToDate(nextEvent.start.dateTime);
-					var time = eventDate.toTimeString();
-					console.log("time of the event: "+time);
-					var event_info = {
-						'KEY_NAME_EVENT' : nextEvent.summary,
-						'KEY_TIME_EVENT' : time
-					};
-					sendMessageToApp(event_info);
-				}
-				else {
-					//TODO change this to more readable error
-					sendMessageToApp({'KEY_NAME_EVENT' : 'No events'});
-				}
+			if (events && events.items && events.items.length > 0){
+				var nextEvent = events.items[0];
+				// Parse the Date String into readable format
+				var eventDate = stringToDate(nextEvent.start.dateTime);
+				var time = eventDate.toTimeString();
+				console.log("time of the event: "+time);
+				var event_info = {
+					'KEY_NAME_EVENT' : nextEvent.summary,
+					'KEY_TIME_EVENT' : time
+				};
+				sendMessageToApp(event_info);
 			}
 			else {
-				console.log("error: "+ this.responseText);
+				//TODO change this to more readable error
+				sendMessageToApp({'KEY_NAME_EVENT' : 'No events'});
 			}
 		};
-		xhr.open("GET", google_calendar_url);
-		xhr.setRequestHeader("Authorization","Bearer "+db.getItem("access_token"));
-		xhr.send();
-		
+
+		var error = function(responseText) {};
+
+		xhrRequest(google_calendar_url, "GET", params, header, success,error);
 		//DATE=2015-06-16T10%3A13%3A15%2B02%3A00
 		//GET https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin={DATE}&key={YOUR_API_KEY}
     });
@@ -175,28 +220,28 @@ function getCalendarData(){
 // Retrieves the refresh_token and access_token.
 // - code - the authorization code from Google.
 function resolve_tokens(code) {
-	var xhr = new XMLHttpRequest();
-	xhr.open("POST", "https://accounts.google.com/o/oauth2/token", true);
-	xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=utf-8");
-	console.log("Calling resolve_token");
-	xhr.onload = function (e) {
-		if (xhr.readyState == 4 && xhr.status == 200) {
-			var result = JSON.parse(xhr.responseText);
-			console.log("Resolve_token result: "+result);
-			if (result.refresh_token && result.access_token) {
-				db.setItem("refresh_token", result.refresh_token);
-				db.setItem("access_token", result.access_token);
+	console.log("resolve_tokens");
+	var url = "https://accounts.google.com/o/oauth2/token";
+	var header = ["Content-type", "application/x-www-form-urlencoded; charset=utf-8"];
+	var params = ["code="+encodeURIComponent(code), "client_id="+GOOGLE_CLIENT_ID, 
+				  "client_secret="+GOOGLE_CLIENT_SECRET, "redirect_uri="+GOOGLE_REDIRECT_TOKEN_URI,
+				  "grant_type=authorization_code"];
+	var success = function(responseText){
+		var result = JSON.parse(responseText);
+		if (result.refresh_token && result.access_token) {
+			db.setItem("refresh_token", result.refresh_token);
+			db.setItem("access_token", result.access_token);
 
-				getCalendarData();
-			}
-		} else {
-			console.log("Error resolve_token" + xhr.responseText);
-			clean_database();
-			db.setItem("code_error", "Unable to verify the your Google authentication.");
+			getCalendarData();
 		}
 	};
 
-	xhr.send("code="+encodeURIComponent(code)+"&client_id="+GOOGLE_CLIENT_ID+"&client_secret="+GOOGLE_CLIENT_SECRET+"&redirect_uri="+GOOGLE_REDIRECT_TOKEN_URI+"&grant_type=authorization_code");
+	var error = function(responseText){
+		clean_database();
+		db.setItem("code_error", "Unable to verify the your Google authentication.");
+	};
+
+	xhrRequest(url, "POST", params, header, success, error);
 }
 
 // Runs some code after validating and possibly refreshing the access_token.
@@ -217,53 +262,62 @@ function use_access_token(success) {
 // - good - the code to run when the access_token is good, run like good(access_token)
 // - bad - the code to run when the access_token is expired, run like bad()
 function valid_token(access_token, success, error) {
+
 	var url = "https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=" + access_token;
-	xhrRequest(url, 'GET', function(responseText) {
-				var result = JSON.parse(responseText);
+	var successRequest = function(responseText) {
+		var result = JSON.parse(responseText);
 
-				if (result.audience != GOOGLE_CLIENT_ID) {
-					db.removeItem("code");
-					db.removeItem("access_token");
-					db.removeItem("refresh_token");
-					db.setItem("code_error", "There was an error validating your Google Authentication. Please re-authorize access to your account.");
-					return;
-				}
+		if (result.audience != GOOGLE_CLIENT_ID) {
+			db.removeItem("code");
+			db.removeItem("access_token");
+			db.removeItem("refresh_token");
+			db.setItem("code_error", "There was an error validating your Google Authentication. Please re-authorize access to your account.");
+			return;
+		}
 
-				success(access_token);
-			},error);
+		success(access_token);
+	};
+	var errorRequest = function (responseText){
+		error();
+	};
+	
+	xhrRequest(url, "GET", null, null, successRequest, errorRequest);
 }
 
 // Refresh a stale access_token.
 // - refresh_token - the refresh_token to use to retreive a new access_token
 // - success - code to run with the new access_token, run like success(access_token)
 function refresh_access_token(refresh_token, success) {
-	var xhr = new XMLHttpRequest();
-	xhr.open("POST", "https://accounts.google.com/o/oauth2/token", true);
-	console.log("Calling refresh_access_token");
-	xhr.onload = function (e) {
-		if (xhr.readyState == 4 && xhr.status == 200) {
-			var result = JSON.parse(xhr.responseText);
-			console.log("Refresh_access_token result: "+result);
-            if (result.access_token) {
-                db.setItem("access_token", result.access_token);
-                success(result.access_token);
-            }
-		} else {
-			console.log("Error refreshing access_token");
-			clean_database();
+	console.log("refresh_access_token");
+	var url = "https://accounts.google.com/o/oauth2/token";
+	var params = ["refresh_token="+encodeURIComponent(refresh_token), 
+				  "client_id="+GOOGLE_CLIENT_ID, "client_secret="+GOOGLE_CLIENT_SECRET,
+				  "grant_type=refresh_token"];
+	var header = ["Content-type", "application/x-www-form-urlencoded; charset=utf-8"];
+
+	var successRequest = function(responseText){
+		var result = JSON.parse(responseText);
+      	if (result.access_token) {
+            db.setItem("access_token", result.access_token);
+            success(result.access_token);
+        }
+        else {
+        	clean_database();
 			db.setItem("code_error", "Error refreshing access_token");
-		}
+        }
 	};
-	xhr.send("refresh_token="+encodeURIComponent(refresh_token)+
-			"&client_id="+GOOGLE_CLIENT_ID+
-			"&client_secret="+GOOGLE_CLIENT_SECRET+
-			"&grant_type=refresh_token");
+
+	var errorRequest = function(responseText){
+		clean_database();
+		db.setItem("code_error", "Error refreshing access_token");
+	};
+
+	xhrRequest(url, "POST", params, header, successRequest, errorRequest);
 }
 
 // When you click on Settings in Pebble's phone app. Go to the configuration.html page.
 function show_configuration() {
     clean_database();
-
     Pebble.openURL(CONFIG_URL);
 }
 

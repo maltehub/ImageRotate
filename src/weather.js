@@ -177,6 +177,7 @@ function getCalendarData(){
 function resolve_tokens(code) {
 	var xhr = new XMLHttpRequest();
 	xhr.open("POST", "https://accounts.google.com/o/oauth2/token", true);
+	xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded; charset=utf-8");
 	console.log("Calling resolve_token");
 	xhr.onload = function (e) {
 		if (xhr.readyState == 4 && xhr.status == 200) {

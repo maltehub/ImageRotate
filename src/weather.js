@@ -38,7 +38,7 @@ var xhrRequest = function (url, type, params, header, success, error) {
 	paramsString = "";
 	if (params != null) {
 		for (var i = 0; i < params.length; i++) {
-			paramsString += encodeURIComponent(params[i]);
+			paramsString += params[i];
 			if (i < params.length -1){
 				paramsString += "&";
 			}
@@ -46,6 +46,7 @@ var xhrRequest = function (url, type, params, header, success, error) {
 	}
 	if (type == 'POST') {
 		request.open(type, url, true);
+		console.log("paramsString : "+paramsString);
 		request.send(paramsString);
 	}
 	else {
@@ -69,14 +70,20 @@ function clean_database(){
 
 
 function sendMessageToApp(dictionary){
-      Pebble.sendAppMessage(dictionary,
-        function(e) {
-          console.log('Message sent to Pebble successfully! ' + JSON.parse(dictionary));
-        },
-        function(e) {
-          console.log('Error sending message to Pebble! ' + JSON.parse(dictionary));
-        }
-      );
+
+	var readable_dictionary = '';
+	for (key in dictionary){
+		readable_dictionary += key + ": " + dictionary[key] + " ";
+	}
+
+	Pebble.sendAppMessage(dictionary,
+		function(e) {
+		  console.log('Message sent to Pebble successfully! ' + readable_dictionary);
+		},
+		function(e) {
+		  console.log('Error sending message to Pebble! ' + readable_dictionary);
+		}
+	);
 }
 
 function locationSuccess(pos) {

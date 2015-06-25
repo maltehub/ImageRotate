@@ -31,6 +31,7 @@ var xhrRequest = function (url, type, params, header, success, error) {
 	};
 
 	if (header != null) {
+		console.log("Header found: "+ header[0] + " : "+ header[1]);
 		request.setRequestHeader(header[0], header[1]);
 	}
 
@@ -45,9 +46,7 @@ var xhrRequest = function (url, type, params, header, success, error) {
 	}
 	if (type == 'POST') {
 		request.open(type, url, true);
-		if (paramsString != "") {
-			request.send(paramsString);
-		}
+		request.send(paramsString);
 	}
 	else {
 		if (paramsString != ""){

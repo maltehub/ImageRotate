@@ -201,7 +201,8 @@ function getCalendarData(){
 				var nextEvent = events.items[0];
 				// Parse the Date String into readable format
 				var eventDate = stringToDate(nextEvent.start.dateTime);
-				var time = eventDate.toTimeString();
+        var time = eventDate.getDate() + "-" + eventDate.getMonth() + "-" + eventDate.getFullYear() + " " + eventDate.getHours() + ":" + eventDate.getMinutes();
+				// var time = eventDate.toTimeString();
 				console.log("time of the event: "+time);
 				var event_info = {
 					'KEY_NAME_EVENT' : nextEvent.summary,
@@ -256,7 +257,10 @@ function use_access_token(success) {
     var refresh_token = db.getItem("refresh_token");
     var access_token = db.getItem("access_token");
 
-    if (!refresh_token) return;
+    if (!refresh_token) {
+        console.log("there is not refresh token. Getting one.");
+
+    }
 
     valid_token(access_token, success, function() {
         refresh_access_token(refresh_token, success);
@@ -309,7 +313,7 @@ function refresh_access_token(refresh_token, success) {
         }
         else {
         	clean_database();
-			db.setItem("code_error", "Error refreshing access_token");
+			    db.setItem("code_error", "Error refreshing access_token");
         }
 	};
 
@@ -355,7 +359,7 @@ Pebble.addEventListener('ready',
 
     // Get the initial weather
     getWeather();
-	getCalendarData();
+    getCalendarData();
 
   }
 );

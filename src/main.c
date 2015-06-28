@@ -1,4 +1,5 @@
 #include <pebble.h>
+
 #define KEY_TEMPERATURE 0
 #define KEY_CONDITIONS 1
 #define KEY_NAME_EVENT 2
@@ -23,6 +24,9 @@ static char conditions_buffer[32];
 static char weather_layer_buffer[32];
 static char event_name_buffer[64];
 static char event_time_buffer[16];
+
+// struct to keep the event time once retrieved
+// static struct tm event_time;
 
 static TextLayer *s_battery_layer;
 static int nextappointment=0;
@@ -197,12 +201,13 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", t->value->cstring);
         break;
       case KEY_NAME_EVENT:
-		snprintf(event_name_buffer, sizeof(event_name_buffer), "%s", t->value->cstring);
-		text_layer_set_text(s_textlayer_event_title, event_name_buffer);
+    		snprintf(event_name_buffer, sizeof(event_name_buffer), "%s", t->value->cstring);
+    		text_layer_set_text(s_textlayer_event_title, event_name_buffer);
         break;
       case KEY_TIME_EVENT:
-		snprintf(event_time_buffer, sizeof(event_time_buffer), "%s", t->value->cstring);
-		text_layer_set_text(s_textlayer_event_time, event_time_buffer);
+        //12-6-2015 23:55 
+     		snprintf(event_time_buffer, sizeof(event_time_buffer), "%s", t->value->cstring);
+    		text_layer_set_text(s_textlayer_event_time, event_time_buffer);
         break;
       default:
         APP_LOG(APP_LOG_LEVEL_ERROR, "Key %d not recognized!", (int)t->key);

@@ -1,9 +1,13 @@
 #include <pebble.h>
 
-#define KEY_TEMPERATURE 0
-#define KEY_CONDITIONS 1
-#define KEY_NAME_EVENT 2
-#define KEY_TIME_EVENT 3
+#define KEY_TEMPERATURE   0
+#define KEY_CONDITIONS    1
+#define KEY_EVENT_NAME    2
+#define KEY_EVENT_DAY     3
+#define KEY_EVENT_MONTH   4
+#define KEY_EVENT_YEAR    5
+#define KEY_EVENT_HOUR    6
+#define KEY_EVENT_MINUTE  7
 
   
 static Window *s_main_window;
@@ -24,9 +28,10 @@ static char conditions_buffer[32];
 static char weather_layer_buffer[32];
 static char event_name_buffer[64];
 static char event_time_buffer[16];
+static char time_to_event_buffer[16];
 
 // struct to keep the event time once retrieved
-// static struct tm event_time;
+static struct tm event_time;
 
 static TextLayer *s_battery_layer;
 static int nextappointment=0;
@@ -64,6 +69,60 @@ static void update_time() {
   // Display this time on the TextLayer
   text_layer_set_text(s_time_layer, buffer);
   text_layer_set_text(s_date_layer, date_buffer);
+}
+
+// this function is called when the event time is received from the google calendar
+static void handle_event_time(int day, int month, int year, int hour, int minutes) {
+  // Assemble event time
+  event_time.tm_mday = day;
+  event_time.tm_mon = month-1;
+  event_time.tm_year = year - 1900;
+  event_time.tm_min = minutes;
+  event_time.tm_hour = hour;
+  time_t event_time_t = mktime(&event_time);
+
+  strftime(event_time_buffer, sizeof(event_time_buffer), "%H:%M", &event_time);
+  text_layer_set_text(s_textlayer_event_time, event_time_buffer);
+
+  // Also calculate the time to event for the top label
+  time_t now = time(NULL);
+  int seconds = 0;
+
+  seconds = difftime(now,event_time_t);
+  if (seconds > 60) {
+    seconds /= 60;
+    //minutes
+    if (seconds > 60) {
+      seconds /= 60;
+      // hours
+      if (seconds > 24) {
+        seconds /= 24;
+        // days
+        if (seconds > 31) {
+          seconds /= 31;
+          //months
+          snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d months", seconds);
+          text_layer_set_text(s_textlayer_time, time_to_event_buffer);
+        }
+        else {
+          snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d days", seconds);
+          text_layer_set_text(s_textlayer_time, time_to_event_buffer);
+        }
+      }
+      else {
+        snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d hours", seconds);
+        text_layer_set_text(s_textlayer_time, time_to_event_buffer);
+      }
+    }
+    else {
+      snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d minutes", seconds);
+      text_layer_set_text(s_textlayer_time, time_to_event_buffer);
+    }
+  }
+  else {
+    snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d seconds", seconds);
+    text_layer_set_text(s_textlayer_time, time_to_event_buffer);
+  }
 }
 
 static void main_window_load(Window *window) {
@@ -189,7 +248,12 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   // Read first item
   Tuple *t = dict_read_first(iterator);
 
-	
+	int day = 0;
+  int month = 0;
+  int year = 0;
+  int hour = 0;
+  int minutes = 0;
+
   // For all items
   while(t != NULL) {
     // Which key was received?
@@ -200,15 +264,27 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
       case KEY_CONDITIONS:
         snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", t->value->cstring);
         break;
-      case KEY_NAME_EVENT:
+      case KEY_EVENT_NAME:
     		snprintf(event_name_buffer, sizeof(event_name_buffer), "%s", t->value->cstring);
     		text_layer_set_text(s_textlayer_event_title, event_name_buffer);
         break;
-      case KEY_TIME_EVENT:
+      case KEY_EVENT_DAY:
         //12-6-2015 23:55 
-     		snprintf(event_time_buffer, sizeof(event_time_buffer), "%s", t->value->cstring);
-    		text_layer_set_text(s_textlayer_event_time, event_time_buffer);
+     	  day = (int)t->value->int32;
         break;
+      case KEY_EVENT_MONTH:
+        month = (int)t->value->int32;
+        break;
+      case KEY_EVENT_YEAR:
+        year = (int)t->value->int32;
+        break;
+      case KEY_EVENT_HOUR:
+        hour = (int)t->value->int32;
+        break;
+      case KEY_EVENT_MINUTE:
+        minutes = (int)t->value->int32;
+        break;
+
       default:
         APP_LOG(APP_LOG_LEVEL_ERROR, "Key %d not recognized!", (int)t->key);
         break;
@@ -220,6 +296,9 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   // Assemble full string and display
   snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s, %s", conditions_buffer, temperature_buffer);
   text_layer_set_text(s_weather_layer, weather_layer_buffer);
+
+
+  handle_event_time(day, month, year, hour, minutes);
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {

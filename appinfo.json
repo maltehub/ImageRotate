@@ -2,8 +2,12 @@
     "appKeys": {
         "KEY_TEMPERATURE": 0,
         "KEY_CONDITIONS": 1,
-        "KEY_NAME_EVENT" : 2,
-        "KEY_TIME_EVENT" : 3
+        "KEY_EVENT_NAME" : 2,
+        "KEY_EVENT_DAY" : 3,
+        "KEY_EVENT_MONTH" : 4,
+        "KEY_EVENT_YEAR" : 5,
+        "KEY_EVENT_HOUR" : 6,
+        "KEY_EVENT_MINUTE" : 7
     },
     "capabilities": [
         "location", 

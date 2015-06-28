@@ -201,18 +201,19 @@ function getCalendarData(){
 				var nextEvent = events.items[0];
 				// Parse the Date String into readable format
 				var eventDate = stringToDate(nextEvent.start.dateTime);
-        var time = eventDate.getDate() + "-" + eventDate.getMonth() + "-" + eventDate.getFullYear() + " " + eventDate.getHours() + ":" + eventDate.getMinutes();
-				// var time = eventDate.toTimeString();
-				console.log("time of the event: "+time);
 				var event_info = {
-					'KEY_NAME_EVENT' : nextEvent.summary,
-					'KEY_TIME_EVENT' : time
+					'KEY_EVENT_NAME' : nextEvent.summary,
+					'KEY_EVENT_DAY' : eventDate.getDate(),
+          'KEY_EVENT_MONTH' : eventDate.getMonth(),
+          'KEY_EVENT_YEAR' : eventDate.getFullYear(),
+          'KEY_EVENT_HOUR' : eventDate.getHours(),
+          'KEY_EVENT_MINUTE' : eventDate.getMinutes()
 				};
 				sendMessageToApp(event_info);
 			}
 			else {
 				//TODO change this to more readable error
-				sendMessageToApp({'KEY_NAME_EVENT' : 'No events'});
+				sendMessageToApp({'KEY_EVENT_NAME' : 'No events'});
 			}
 		};
 

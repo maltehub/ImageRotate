@@ -47,6 +47,48 @@ static void handle_battery(BatteryChargeState charge_state) {
   text_layer_set_text(s_battery_layer, battery_text);
 }
 
+static void calculate_time_to_event(){
+  // Also calculate the time to event for the top label
+  time_t now = time(NULL);
+  int seconds = 0;
+
+  seconds = difftime(mktime(&event_time), now);
+  APP_LOG(APP_LOG_LEVEL_INFO, "seconds to event: %d", seconds);
+
+  if (seconds > 60) {
+    seconds /= 60;
+    //minutes
+    if (seconds > 60) {
+      seconds /= 60;
+      // hours
+      if (seconds > 24) {
+        seconds /= 24;
+        // days
+        if (seconds > 31) {
+          seconds /= 31;
+          //months
+          snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d months", seconds);
+          text_layer_set_text(s_textlayer_time, time_to_event_buffer);
+        }
+        else {
+          snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d days", seconds);
+        }
+      }
+      else {
+        snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d hours", seconds);
+      }
+    }
+    else {
+      snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d minutes", seconds);
+    }
+  }
+  else {
+    snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d seconds", seconds);
+  }
+
+  text_layer_set_text(s_textlayer_time, time_to_event_buffer);
+}
+
 static void update_time() {
   // Get a tm structure
   time_t temp = time(NULL); 
@@ -69,13 +111,16 @@ static void update_time() {
   // Display this time on the TextLayer
   text_layer_set_text(s_time_layer, buffer);
   text_layer_set_text(s_date_layer, date_buffer);
+
+  // Update time to event
+  calculate_time_to_event();
 }
 
 // this function is called when the event time is received from the google calendar
 static void handle_event_time(int day, int month, int year, int hour, int minutes) {
   // Assemble event time
   event_time.tm_mday = day;
-  event_time.tm_mon = month-1;
+  event_time.tm_mon = month;
   event_time.tm_year = year - 1900;
   event_time.tm_min = minutes;
   event_time.tm_hour = hour;
@@ -84,45 +129,7 @@ static void handle_event_time(int day, int month, int year, int hour, int minute
   strftime(event_time_buffer, sizeof(event_time_buffer), "%H:%M", &event_time);
   text_layer_set_text(s_textlayer_event_time, event_time_buffer);
 
-  // Also calculate the time to event for the top label
-  time_t now = time(NULL);
-  int seconds = 0;
-
-  seconds = difftime(now,event_time_t);
-  if (seconds > 60) {
-    seconds /= 60;
-    //minutes
-    if (seconds > 60) {
-      seconds /= 60;
-      // hours
-      if (seconds > 24) {
-        seconds /= 24;
-        // days
-        if (seconds > 31) {
-          seconds /= 31;
-          //months
-          snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d months", seconds);
-          text_layer_set_text(s_textlayer_time, time_to_event_buffer);
-        }
-        else {
-          snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d days", seconds);
-          text_layer_set_text(s_textlayer_time, time_to_event_buffer);
-        }
-      }
-      else {
-        snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d hours", seconds);
-        text_layer_set_text(s_textlayer_time, time_to_event_buffer);
-      }
-    }
-    else {
-      snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d minutes", seconds);
-      text_layer_set_text(s_textlayer_time, time_to_event_buffer);
-    }
-  }
-  else {
-    snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d seconds", seconds);
-    text_layer_set_text(s_textlayer_time, time_to_event_buffer);
-  }
+  calculate_time_to_event();
 }
 
 static void main_window_load(Window *window) {

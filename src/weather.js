@@ -161,7 +161,7 @@ function stringToDate(dateString){
 	var components = dateStr.split(" ");
 	// modify month between 1 based ISO 8601 and zero based Date
 	components[1]--;
-	var date = new Date(Date.UTC(components[0],components[1],components[2],components[3],components[4],components[5]));
+	var date = new Date(components[0],components[1],components[2],components[3],components[4],components[5]);
 	return date;
 }
 
@@ -186,12 +186,17 @@ function getCalendarData(){
 	use_access_token(function(access_token) {
 		var today = new Date();
 		var eventMinDate = dateToString(today);
+        var next_year = new Date();
+        next_year.setYear(today.getFullYear() + 1);
+        var eventMaxDate = dateToString(next_year);
 		var calendar_id = encodeURIComponent("primary");
 
 
 		//var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events?orderBy=startTime&maxResults=1&timeMin="+encodeURIComponent(eventMinDate) +"&key="+GOOGLE_API_KEY;
 		var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events";
-		var params = ["timeMin="+encodeURIComponent(eventMinDate),"maxResults=1","key="+GOOGLE_API_KEY];
+		var params = ["timeMax="+encodeURIComponent(eventMaxDate),
+                      "timeMin="+encodeURIComponent(eventMinDate),
+                      "maxResults=1", "orderBy=startTime", "singleEvents=true","key="+GOOGLE_API_KEY];
 		var header = ["Authorization","Bearer "+db.getItem("access_token")];
 
 		var success = function(responseText){
@@ -201,13 +206,14 @@ function getCalendarData(){
 				var nextEvent = events.items[0];
 				// Parse the Date String into readable format
 				var eventDate = stringToDate(nextEvent.start.dateTime);
+                console.log(nextEvent.start.dateTime);
 				var event_info = {
 					'KEY_EVENT_NAME' : nextEvent.summary,
 					'KEY_EVENT_DAY' : eventDate.getDate(),
-          'KEY_EVENT_MONTH' : eventDate.getMonth(),
-          'KEY_EVENT_YEAR' : eventDate.getFullYear(),
-          'KEY_EVENT_HOUR' : eventDate.getHours(),
-          'KEY_EVENT_MINUTE' : eventDate.getMinutes()
+                    'KEY_EVENT_MONTH' : eventDate.getMonth(),
+                    'KEY_EVENT_YEAR' : eventDate.getFullYear(),
+                    'KEY_EVENT_HOUR' : eventDate.getHours(),
+                    'KEY_EVENT_MINUTE' : eventDate.getMinutes()
 				};
 				sendMessageToApp(event_info);
 			}

@@ -1,4 +1,4 @@
-PHONE_IP = 192.168.1.51
+PHONE_IP = 10.41.101.206
 
 all:
 	pebble build

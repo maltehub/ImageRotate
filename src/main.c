@@ -1,14 +1,15 @@
 #include <pebble.h>
 
-#define KEY_TEMPERATURE   0
-#define KEY_CONDITIONS    1
-#define KEY_EVENT_NAME    2
-#define KEY_EVENT_DAY     3
-#define KEY_EVENT_MONTH   4
-#define KEY_EVENT_YEAR    5
-#define KEY_EVENT_HOUR    6
-#define KEY_EVENT_MINUTE  7
-
+enum {
+  KEY_TEMPERATURE = 0,
+  KEY_CONDITIONS = 1,
+  KEY_EVENT_NAME = 2,
+  KEY_EVENT_DAY = 3,
+  KEY_EVENT_MONTH = 4,
+  KEY_EVENT_YEAR = 5,
+  KEY_EVENT_HOUR = 6,
+  KEY_EVENT_MINUTE = 7
+};
   
 static Window *s_main_window;
 static TextLayer *s_time_layer;
@@ -16,6 +17,9 @@ static TextLayer *s_date_layer;
 static TextLayer *s_weather_layer;
 static GBitmap *s_bitmap;
 static BitmapLayer *s_bitmap_layer;
+static GBitmap *s_card_bitmap;
+static BitmapLayer *s_card_bitmap_layer;
+
 // Event vars
 static GFont s_res_gothic_14;
 static TextLayer *s_textlayer_time;
@@ -34,7 +38,14 @@ static char time_to_event_buffer[16];
 static struct tm event_time;
 
 static TextLayer *s_battery_layer;
-static int nextappointment=0;
+static int nextappointment=1;
+
+/******************************************** ANIMATIONS ***************************************************/
+
+
+
+
+/******************************************** DYNAMIC STUFF ***************************************************/
 
 static void handle_battery(BatteryChargeState charge_state) {
   static char battery_text[] = "100%";
@@ -53,6 +64,9 @@ static void calculate_time_to_event(){
   int seconds = 0;
 
   seconds = difftime(mktime(&event_time), now);
+  if (seconds < 0) {
+    seconds = 0;
+  }
   APP_LOG(APP_LOG_LEVEL_INFO, "seconds to event: %d", seconds);
 
   if (seconds > 60) {
@@ -68,7 +82,6 @@ static void calculate_time_to_event(){
           seconds /= 31;
           //months
           snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d months", seconds);
-          text_layer_set_text(s_textlayer_time, time_to_event_buffer);
         }
         else {
           snprintf(time_to_event_buffer, sizeof(time_to_event_buffer), "%d days", seconds);
@@ -132,9 +145,11 @@ static void handle_event_time(int day, int month, int year, int hour, int minute
   calculate_time_to_event();
 }
 
+/******************************************** UI ***************************************************/
+
 static void main_window_load(Window *window) {
   // Create the background image
-      Layer *window_layer = window_get_root_layer(window);
+  Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
   s_bitmap = gbitmap_create_with_resource(RESOURCE_ID_BG_IMAGE);
@@ -198,23 +213,34 @@ static void main_window_load(Window *window) {
   text_layer_set_text(s_battery_layer, "100%");
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_battery_layer));
 	
+  // Card layer
+  s_card_bitmap = gbitmap_create_with_resource(RESOURCE_ID_CARD_IMAGE);
+
+  s_card_bitmap_layer = bitmap_layer_create(GRect(4,89,136,75));
+  bitmap_layer_set_bitmap(s_card_bitmap_layer, s_card_bitmap);
+  bitmap_layer_set_compositing_mode(s_card_bitmap_layer, GCompOpSet);
+  layer_add_child(window_layer, bitmap_layer_get_layer(s_card_bitmap_layer));
+
   // Load font 
   s_res_gothic_14 = fonts_get_system_font(FONT_KEY_GOTHIC_14);
   // Time to the event
-  s_textlayer_time = text_layer_create(GRect(8, 98, 125, 17));
+  s_textlayer_time = text_layer_create(GRect(16, 98, 120, 17));
   text_layer_set_text(s_textlayer_time, "10 min");
+  text_layer_set_background_color(s_textlayer_time, GColorClear);
   layer_add_child(window_get_root_layer(window), (Layer *)s_textlayer_time);
   
   // Title of the event
-  s_textlayer_event_title = text_layer_create(GRect(8, 113, 127, 20));
+  s_textlayer_event_title = text_layer_create(GRect(16, 113, 120, 20));
   text_layer_set_text(s_textlayer_event_title, "Picnic with friends");
   text_layer_set_font(s_textlayer_event_title, s_res_gothic_14);
+  text_layer_set_background_color(s_textlayer_event_title, GColorClear);
   layer_add_child(window_get_root_layer(window), (Layer *)s_textlayer_event_title);
   
   // Time and place (or other info)
-  s_textlayer_event_time = text_layer_create(GRect(8, 136, 125, 26));
+  s_textlayer_event_time = text_layer_create(GRect(16, 136, 120, 26));
   text_layer_set_text(s_textlayer_event_time, "12:30 PM");
   text_layer_set_font(s_textlayer_event_time, s_res_gothic_14);
+  text_layer_set_background_color(s_textlayer_event_time, GColorClear);
   layer_add_child(window_get_root_layer(window), (Layer *)s_textlayer_event_time);
  
 }
@@ -227,6 +253,8 @@ static void main_window_unload(Window *window) {
     gbitmap_destroy(s_bitmap);
     text_layer_destroy(s_weather_layer);
     text_layer_destroy(s_battery_layer);
+    bitmap_layer_destroy(s_card_bitmap_layer);
+    gbitmap_destroy(s_card_bitmap);
     text_layer_destroy(s_textlayer_time);
     text_layer_destroy(s_textlayer_event_title);
     text_layer_destroy(s_textlayer_event_time);
@@ -250,6 +278,9 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
   }
 
 }
+
+
+/******************************************** APP MESSAGES ***************************************************/
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
   // Read first item
@@ -319,6 +350,10 @@ static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResul
 static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
   APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
 }
+
+
+/******************************************** INIT & DEINIT ***************************************************/
+
 
 static void init() {
   // Create main Window element and assign to pointer

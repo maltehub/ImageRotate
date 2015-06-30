@@ -19,6 +19,8 @@ static GBitmap *s_bitmap;
 static BitmapLayer *s_bitmap_layer;
 static GBitmap *s_card_bitmap;
 static BitmapLayer *s_card_bitmap_layer;
+static GBitmap *s_battery_bitmap;
+static BitmapLayer *s_battery_bitmap_layer;
 
 // Event vars
 static GFont s_res_gothic_14;
@@ -36,8 +38,6 @@ static char time_to_event_buffer[16];
 
 // struct to keep the event time once retrieved
 static struct tm event_time;
-
-static TextLayer *s_battery_layer;
 static int nextappointment=1;
 
 /******************************************** ANIMATIONS ***************************************************/
@@ -48,14 +48,14 @@ static int nextappointment=1;
 /******************************************** DYNAMIC STUFF ***************************************************/
 
 static void handle_battery(BatteryChargeState charge_state) {
-  static char battery_text[] = "100%";
+  // static char battery_text[] = "100%";
 
-  if (charge_state.is_charging) {
-    snprintf(battery_text, sizeof(battery_text), "charging");
-  } else {
-    snprintf(battery_text, sizeof(battery_text), "%d%%", charge_state.charge_percent);
-  }
-  text_layer_set_text(s_battery_layer, battery_text);
+  // if (charge_state.is_charging) {
+  //   snprintf(battery_text, sizeof(battery_text), "charging");
+  // } else {
+  //   snprintf(battery_text, sizeof(battery_text), "%d%%", charge_state.charge_percent);
+  // }
+  // text_layer_set_text(s_battery_layer, battery_text);
 }
 
 static void calculate_time_to_event(){
@@ -205,14 +205,13 @@ static void main_window_load(Window *window) {
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_weather_layer));
 
   // Create battery Layer
-  s_battery_layer = text_layer_create(GRect(4, 0, bounds.size.w, 25));
-  text_layer_set_text_color(s_battery_layer, GColorWhite);
-  text_layer_set_background_color(s_battery_layer, GColorClear);
-  text_layer_set_font(s_battery_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-  text_layer_set_text_alignment(s_battery_layer, GTextAlignmentLeft);
-  text_layer_set_text(s_battery_layer, "100%");
-  layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_battery_layer));
-	
+  s_battery_bitmap = gbitmap_create_with_resource(RESOURCE_ID_BATTERY_ICON);
+
+  s_battery_bitmap_layer = bitmap_layer_create(GRect(4,4,28,14));
+  bitmap_layer_set_bitmap(s_battery_bitmap_layer, s_battery_bitmap);
+  bitmap_layer_set_compositing_mode(s_battery_bitmap_layer, GCompOpSet);
+  layer_add_child(window_layer, bitmap_layer_get_layer(s_battery_bitmap_layer));
+
   // Card layer
   s_card_bitmap = gbitmap_create_with_resource(RESOURCE_ID_CARD_IMAGE);
 
@@ -252,7 +251,8 @@ static void main_window_unload(Window *window) {
     bitmap_layer_destroy(s_bitmap_layer);
     gbitmap_destroy(s_bitmap);
     text_layer_destroy(s_weather_layer);
-    text_layer_destroy(s_battery_layer);
+    bitmap_layer_destroy(s_battery_bitmap_layer);
+    gbitmap_destroy(s_battery_bitmap);
     bitmap_layer_destroy(s_card_bitmap_layer);
     gbitmap_destroy(s_card_bitmap);
     text_layer_destroy(s_textlayer_time);

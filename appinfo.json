@@ -27,6 +27,11 @@
                 "file": "images/card.png",
                 "name": "CARD_IMAGE",
                 "type": "png"
+            },
+            {
+                "file": "images/battery_icon.png",
+                "name": "BATTERY_ICON",
+                "type": "png"
             }
         ]
     },

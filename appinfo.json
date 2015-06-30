@@ -32,6 +32,16 @@
                 "file": "images/battery_icon.png",
                 "name": "BATTERY_ICON",
                 "type": "png"
+            },
+            {
+                "file": "images/bluetooth_on.png",
+                "name": "BLUETOOTH_ON_ICON",
+                "type": "png"
+            },
+            {
+                "file": "images/bluetooth_off.png",
+                "name": "BLUETOOTH_OFF_ICON",
+                "type": "png"
             }
         ]
     },

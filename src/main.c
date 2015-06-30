@@ -22,6 +22,8 @@ static BitmapLayer *s_card_bitmap_layer;
 static GBitmap *s_battery_bitmap;
 static BitmapLayer *s_battery_bitmap_layer;
 static Layer *s_battery_inside_layer;
+static GBitmap *s_bluetooth_bitmap;
+static BitmapLayer *s_bluettoth_bitmap_layer;
 
 // Event vars
 static GFont s_res_gothic_14;
@@ -45,10 +47,19 @@ static int battery_percent = 100;
 /******************************************** ANIMATIONS ***************************************************/
 
 
+/******************************************** BLUETOOTH STATUS ***************************************************/
 
+static void handle_bluetooth(bool connected) {
+  if (connected){
+    s_bluetooth_bitmap = gbitmap_create_with_resource(RESOURCE_ID_BLUETOOTH_ON_ICON);
+  }
+  else {
+    s_bluetooth_bitmap = gbitmap_create_with_resource(RESOURCE_ID_BLUETOOTH_OFF_ICON); 
+  }
+  bitmap_layer_set_bitmap(s_bluettoth_bitmap_layer,s_bluetooth_bitmap);
+}
 
-/******************************************** DYNAMIC STUFF ***************************************************/
-
+/******************************************** BATTERY STATUS ***************************************************/
 
 static void draw_battery_status(Layer *battery_layer, GContext *ctx) {
   GRect bounds = layer_get_bounds(battery_layer);
@@ -69,6 +80,8 @@ static void handle_battery(BatteryChargeState charge_state) {
   battery_percent = charge_state.charge_percent;
   layer_mark_dirty(s_battery_inside_layer);
 }
+
+/******************************************** EVENTS AND MESSAGES ***************************************************/
 
 static void calculate_time_to_event(){
   // Also calculate the time to event for the top label
@@ -218,16 +231,28 @@ static void main_window_load(Window *window) {
 
   // Create battery Layer
   s_battery_bitmap = gbitmap_create_with_resource(RESOURCE_ID_BATTERY_ICON);
-  s_battery_bitmap_layer = bitmap_layer_create(GRect(4,4,28,14));
+  s_battery_bitmap_layer = bitmap_layer_create(GRect(11,7,14,7));
   bitmap_layer_set_bitmap(s_battery_bitmap_layer, s_battery_bitmap);
   bitmap_layer_set_compositing_mode(s_battery_bitmap_layer, GCompOpSet);
   layer_add_child(window_layer, bitmap_layer_get_layer(s_battery_bitmap_layer));
 
-  // Create layer to draw the battery inside
+  // Create layer to draw the battery level inside
   s_battery_inside_layer = layer_create(GRect(12,8,10,5));
   layer_add_child(window_layer, s_battery_inside_layer);  
   layer_set_update_proc(s_battery_inside_layer,draw_battery_status);
 
+  // Bluetooth status Layer
+  s_bluettoth_bitmap_layer = bitmap_layer_create(GRect(28, 3, 15, 15));
+  bitmap_layer_set_compositing_mode(s_bluettoth_bitmap_layer,GCompOpSet);
+
+  if (bluetooth_connection_service_peek()){
+    s_bluetooth_bitmap = gbitmap_create_with_resource(RESOURCE_ID_BLUETOOTH_ON_ICON);
+  }
+  else {
+    s_bluetooth_bitmap = gbitmap_create_with_resource(RESOURCE_ID_BLUETOOTH_OFF_ICON); 
+  }
+  bitmap_layer_set_bitmap(s_bluettoth_bitmap_layer,s_bluetooth_bitmap);
+  layer_add_child(window_layer,bitmap_layer_get_layer(s_bluettoth_bitmap_layer));
 
   // Card layer
   s_card_bitmap = gbitmap_create_with_resource(RESOURCE_ID_CARD_IMAGE);
@@ -269,6 +294,9 @@ static void main_window_unload(Window *window) {
     text_layer_destroy(s_weather_layer);
     bitmap_layer_destroy(s_battery_bitmap_layer);
     gbitmap_destroy(s_battery_bitmap);
+    layer_destroy(s_battery_inside_layer);
+    bitmap_layer_destroy(s_bluettoth_bitmap_layer);
+    gbitmap_destroy(s_bluetooth_bitmap);
     bitmap_layer_destroy(s_card_bitmap_layer);
     gbitmap_destroy(s_card_bitmap);
     text_layer_destroy(s_textlayer_time);
@@ -401,7 +429,9 @@ static void init() {
   // Register with TickTimerService
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
   battery_state_service_subscribe(handle_battery);
-  
+  // Register with BT service to check the BT conection status
+  bluetooth_connection_service_subscribe(handle_bluetooth);
+
   // Make sure the time is displayed from the start
   update_time();
 }

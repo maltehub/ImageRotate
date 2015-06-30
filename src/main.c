@@ -21,6 +21,7 @@ static GBitmap *s_card_bitmap;
 static BitmapLayer *s_card_bitmap_layer;
 static GBitmap *s_battery_bitmap;
 static BitmapLayer *s_battery_bitmap_layer;
+static Layer *s_battery_inside_layer;
 
 // Event vars
 static GFont s_res_gothic_14;
@@ -38,7 +39,8 @@ static char time_to_event_buffer[16];
 
 // struct to keep the event time once retrieved
 static struct tm event_time;
-static int nextappointment=1;
+static int nextappointment = 1;
+static int battery_percent = 100;
 
 /******************************************** ANIMATIONS ***************************************************/
 
@@ -47,15 +49,25 @@ static int nextappointment=1;
 
 /******************************************** DYNAMIC STUFF ***************************************************/
 
-static void handle_battery(BatteryChargeState charge_state) {
-  // static char battery_text[] = "100%";
 
-  // if (charge_state.is_charging) {
-  //   snprintf(battery_text, sizeof(battery_text), "charging");
-  // } else {
-  //   snprintf(battery_text, sizeof(battery_text), "%d%%", charge_state.charge_percent);
-  // }
-  // text_layer_set_text(s_battery_layer, battery_text);
+static void draw_battery_status(Layer *battery_layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(battery_layer);
+
+  int battery_width = (bounds.size.w * battery_percent) / 100;
+
+  if (battery_percent <= 20) {
+    graphics_context_set_fill_color(ctx,GColorRed);
+  }
+  else {
+    graphics_context_set_fill_color(ctx,GColorWhite); 
+  }
+
+  graphics_fill_rect(ctx,GRect(bounds.origin.x, bounds.origin.y, battery_width, bounds.size.h),0,GCornerNone);
+}
+
+static void handle_battery(BatteryChargeState charge_state) {
+  battery_percent = charge_state.charge_percent;
+  layer_mark_dirty(s_battery_inside_layer);
 }
 
 static void calculate_time_to_event(){
@@ -156,12 +168,12 @@ static void main_window_load(Window *window) {
 
   s_bitmap_layer = bitmap_layer_create(bounds);
   bitmap_layer_set_bitmap(s_bitmap_layer, s_bitmap);
-#ifdef PBL_PLATFORM_APLITE
-  bitmap_layer_set_compositing_mode(s_bitmap_layer, GCompOpAssign);
-#elif PBL_PLATFORM_BASALT
-  bitmap_layer_set_compositing_mode(s_bitmap_layer, GCompOpSet);
-#endif
-  layer_add_child(window_layer, bitmap_layer_get_layer(s_bitmap_layer));
+  #ifdef PBL_PLATFORM_APLITE
+    bitmap_layer_set_compositing_mode(s_bitmap_layer, GCompOpAssign);
+  #elif PBL_PLATFORM_BASALT
+    bitmap_layer_set_compositing_mode(s_bitmap_layer, GCompOpSet);
+  #endif
+    layer_add_child(window_layer, bitmap_layer_get_layer(s_bitmap_layer));
   
   
   // Create time TextLayer
@@ -206,15 +218,19 @@ static void main_window_load(Window *window) {
 
   // Create battery Layer
   s_battery_bitmap = gbitmap_create_with_resource(RESOURCE_ID_BATTERY_ICON);
-
   s_battery_bitmap_layer = bitmap_layer_create(GRect(4,4,28,14));
   bitmap_layer_set_bitmap(s_battery_bitmap_layer, s_battery_bitmap);
   bitmap_layer_set_compositing_mode(s_battery_bitmap_layer, GCompOpSet);
   layer_add_child(window_layer, bitmap_layer_get_layer(s_battery_bitmap_layer));
 
+  // Create layer to draw the battery inside
+  s_battery_inside_layer = layer_create(GRect(12,8,10,5));
+  layer_add_child(window_layer, s_battery_inside_layer);  
+  layer_set_update_proc(s_battery_inside_layer,draw_battery_status);
+
+
   // Card layer
   s_card_bitmap = gbitmap_create_with_resource(RESOURCE_ID_CARD_IMAGE);
-
   s_card_bitmap_layer = bitmap_layer_create(GRect(4,89,136,75));
   bitmap_layer_set_bitmap(s_card_bitmap_layer, s_card_bitmap);
   bitmap_layer_set_compositing_mode(s_card_bitmap_layer, GCompOpSet);

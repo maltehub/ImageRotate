@@ -27,6 +27,9 @@ static Layer *s_battery_inside_layer;
 static GBitmap *s_bluetooth_bitmap;
 static BitmapLayer *s_bluettoth_bitmap_layer;
 
+// Animations
+
+
 // Event vars
 static GFont s_res_gothic_14;
 static TextLayer *s_textlayer_time;
@@ -41,10 +44,86 @@ static char time_to_event_buffer[16];
 
 // struct to keep the event time once retrieved
 static struct tm event_time;
-static int nextappointment = 1;
+static int nextappointment = 0;
 static int battery_percent = 100;
 
 /******************************************** ANIMATIONS ***************************************************/
+
+static void animate_card(){
+
+    int ANIMATION_DURATION = 500;
+
+    // Card 
+    Layer *card_layer = bitmap_layer_get_layer(s_card_bitmap_layer);
+    GRect start_card_frame = layer_get_frame(card_layer);
+    GRect end_card_frame = start_card_frame;
+    end_card_frame.origin.y = 89;
+
+    PropertyAnimation *card_property_animation = property_animation_create_layer_frame(card_layer, &start_card_frame, &end_card_frame);
+    Animation *card_animation = property_animation_get_animation(card_property_animation);
+    animation_set_duration(card_animation,ANIMATION_DURATION);
+
+
+    // Time to event
+    Layer *time_to_event_layer = text_layer_get_layer(s_textlayer_time);
+    GRect start_time_to_event_frame = layer_get_frame(time_to_event_layer);
+    GRect end_time_to_event_frame = start_time_to_event_frame;
+    end_time_to_event_frame.origin.y = 98;
+
+    PropertyAnimation *time_to_event_property_animation = property_animation_create_layer_frame(time_to_event_layer, &start_time_to_event_frame, &end_time_to_event_frame);
+    Animation *time_to_event_animation = property_animation_get_animation(time_to_event_property_animation);
+    animation_set_duration(time_to_event_animation,ANIMATION_DURATION);
+
+
+    // Title
+    Layer *title_layer = text_layer_get_layer(s_textlayer_event_title);
+    GRect start_title_frame = layer_get_frame(title_layer);
+    GRect end_title_frame = start_title_frame;
+    end_title_frame.origin.y = 113;
+
+    PropertyAnimation *title_property_animation = property_animation_create_layer_frame(title_layer, &start_title_frame, &end_title_frame);
+    Animation *title_animation = property_animation_get_animation(title_property_animation);
+    animation_set_duration(title_animation,ANIMATION_DURATION);
+
+    
+    // Time
+    Layer *event_time_layer = text_layer_get_layer(s_textlayer_event_time);
+    GRect start_time_frame = layer_get_frame(event_time_layer);
+    GRect end_time_frame = start_time_frame;
+    end_time_frame.origin.y = 136;
+
+    PropertyAnimation *event_time_property_animation = property_animation_create_layer_frame(event_time_layer, &start_time_frame, &end_time_frame);
+    Animation *event_time_animation = property_animation_get_animation(event_time_property_animation);
+    animation_set_duration(event_time_animation,ANIMATION_DURATION);
+
+
+    // Clock
+    Layer *time_layer = text_layer_get_layer(s_time_layer);
+    GRect start_time_layer_frame = layer_get_frame(time_layer);
+    GRect end_time_layer_frame = start_time_layer_frame;
+    end_time_layer_frame.origin.y = 26;
+
+    PropertyAnimation *time_property_animation = property_animation_create_layer_frame(time_layer, &start_time_layer_frame, &end_time_layer_frame);
+    Animation *time_animation = property_animation_get_animation(time_property_animation);
+    animation_set_duration(time_animation,ANIMATION_DURATION);
+
+
+    // Date
+    Layer *date_layer = text_layer_get_layer(s_date_layer);
+    GRect start_date_layer_frame = layer_get_frame(date_layer);
+    GRect end_date_layer_frame = start_date_layer_frame;
+    end_date_layer_frame.origin.y = 63;
+
+    PropertyAnimation *date_property_animation = property_animation_create_layer_frame(date_layer, &start_date_layer_frame, &end_date_layer_frame);
+    Animation *date_animation = property_animation_get_animation(date_property_animation);
+    animation_set_duration(date_animation,ANIMATION_DURATION);
+
+
+    // the whole animation sequence
+    Animation *spawn = animation_spawn_create(card_animation,time_to_event_animation,title_animation,event_time_animation, time_animation, date_animation, NULL);
+    animation_set_curve(spawn,AnimationCurveEaseInOut);
+    animation_schedule(spawn);
+}
 
 
 /******************************************** BLUETOOTH STATUS ***************************************************/
@@ -303,7 +382,7 @@ static void main_window_load(Window *window) {
 
   // Card layer
   s_card_bitmap = gbitmap_create_with_resource(RESOURCE_ID_CARD_IMAGE);
-  s_card_bitmap_layer = bitmap_layer_create(GRect(4,89,136,75));
+  s_card_bitmap_layer = bitmap_layer_create(GRect(4,169,136,75));
   bitmap_layer_set_bitmap(s_card_bitmap_layer, s_card_bitmap);
   bitmap_layer_set_compositing_mode(s_card_bitmap_layer, GCompOpSet);
   layer_add_child(window_layer, bitmap_layer_get_layer(s_card_bitmap_layer));
@@ -311,20 +390,20 @@ static void main_window_load(Window *window) {
   // Load font 
   s_res_gothic_14 = fonts_get_system_font(FONT_KEY_GOTHIC_14);
   // Time to the event
-  s_textlayer_time = text_layer_create(GRect(16, 98, 120, 17));
+  s_textlayer_time = text_layer_create(GRect(16, 178, 120, 17));
   text_layer_set_text(s_textlayer_time, "10 min");
   text_layer_set_background_color(s_textlayer_time, GColorClear);
   layer_add_child(window_get_root_layer(window), (Layer *)s_textlayer_time);
   
   // Title of the event
-  s_textlayer_event_title = text_layer_create(GRect(16, 113, 120, 20));
+  s_textlayer_event_title = text_layer_create(GRect(16, 193, 120, 20));
   text_layer_set_text(s_textlayer_event_title, "Picnic with friends");
   text_layer_set_font(s_textlayer_event_title, s_res_gothic_14);
   text_layer_set_background_color(s_textlayer_event_title, GColorClear);
   layer_add_child(window_get_root_layer(window), (Layer *)s_textlayer_event_title);
   
   // Time and place (or other info)
-  s_textlayer_event_time = text_layer_create(GRect(16, 136, 120, 26));
+  s_textlayer_event_time = text_layer_create(GRect(16, 216, 120, 26));
   text_layer_set_text(s_textlayer_event_time, "12:30 PM");
   text_layer_set_font(s_textlayer_event_time, s_res_gothic_14);
   text_layer_set_background_color(s_textlayer_event_time, GColorClear);
@@ -433,6 +512,8 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
 
   // handle the event time
   handle_event_time(day, month, year, hour, minutes);
+
+  animate_card();
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {

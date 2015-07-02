@@ -21,7 +21,7 @@ var xhrRequest = function (url, type, params, header, success, error) {
 	var request = new XMLHttpRequest();
 	request.onload = function(){
 		if (this.readyState == 4 && this.status == 200) {
-	        console.log("Success: "+ this.responseText);
+	        // console.log("Success: "+ this.responseText);
 	        success(this.responseText);
 		}
 		else {
@@ -31,7 +31,7 @@ var xhrRequest = function (url, type, params, header, success, error) {
 	};
 
 	if (header != null) {
-		console.log("Header found: "+ header[0] + " : "+ header[1]);
+		// console.log("Header found: "+ header[0] + " : "+ header[1]);
 		request.setRequestHeader(header[0], header[1]);
 	}
 
@@ -96,16 +96,15 @@ function locationSuccess(pos) {
 
 		// Temperature in Kelvin requires adjustment
 		var temperature = Math.round(json.main.temp - 273.15);
-		console.log('Temperature is ' + temperature);
-
 		// Conditions
-		var conditions = json.weather[0].main;      
-		console.log('Conditions are ' + conditions); 
-		      
-		  // Assemble dictionary using our keys
+		var conditions_icon = json.weather[0].icon;
+        // The icon name comes as a string, and like "01d". We need to get only the integer part of it.
+        var conditions = conditions_icon.substr(0, conditions_icon.length-1);
+
+        // Assemble dictionary using our keys
 		var dictionary = {
 		   'KEY_TEMPERATURE': temperature,
-		   'KEY_CONDITIONS': conditions
+		   'KEY_CONDITIONS': parseInt(conditions)
 		};
 		  
 		// Send to Pebble
@@ -145,11 +144,11 @@ function getWeather() {
 // Google Calendar FUNCTIONS //
 // ------------------------- //
 
+var CONFIG_URL = 'http://vieju.net/misato/pebbleWear/configuration.php';
 
 var GOOGLE_CLIENT_ID = '1000865298828-ee7o3g9jsdimltbk9futjt6pp13vaav4.apps.googleusercontent.com';
 var GOOGLE_CLIENT_SECRET = 'QtGvlFxQGpdshPoqaiXS_gOD';
-var GOOGLE_REDIRECT_TOKEN_URI = 'http://vieju.net/misato/pebbleWear/configuration.php';
-var CONFIG_URL = 'http://vieju.net/misato/pebbleWear/configuration.php';
+var GOOGLE_REDIRECT_TOKEN_URI = CONFIG_URL;
 var GOOGLE_API_KEY = 'AIzaSyADXDNNK8F-Q6tucJRzx0ecFB-yQe1k-gM';
 
 // Util Date functions
@@ -192,7 +191,6 @@ function getCalendarData(){
 		var calendar_id = encodeURIComponent("primary");
 
 
-		//var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events?orderBy=startTime&maxResults=1&timeMin="+encodeURIComponent(eventMinDate) +"&key="+GOOGLE_API_KEY;
 		var google_calendar_url = "https://www.googleapis.com/calendar/v3/calendars/"+calendar_id+"/events";
 		var params = ["timeMax="+encodeURIComponent(eventMaxDate),
                       "timeMin="+encodeURIComponent(eventMinDate),
@@ -226,8 +224,6 @@ function getCalendarData(){
 		var error = function(responseText) {};
 
 		xhrRequest(google_calendar_url, "GET", params, header, success,error);
-		//DATE=2015-06-16T10%3A13%3A15%2B02%3A00
-		//GET https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin={DATE}&key={YOUR_API_KEY}
     });
 }
 

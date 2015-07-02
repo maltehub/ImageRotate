@@ -42,6 +42,51 @@
                 "file": "images/bluetooth_off.png",
                 "name": "BLUETOOTH_OFF_ICON",
                 "type": "png"
+            },
+            {
+                "file": "images/weather/broken-clouds.png",
+                "name": "WEATHER_ICON_BROKEN_CLOUDS",
+                "type": "png"
+            },
+            {
+                "file": "images/weather/clear-sky.png",
+                "name": "WEATHER_ICON_CLEAR",
+                "type": "png"
+            },
+            {
+                "file": "images/weather/few-clouds.png",
+                "name": "WEATHER_ICON_FEW_CLOUDS",
+                "type": "png"
+            },
+            {
+                "file": "images/weather/mist.png",
+                "name": "WEATHER_ICON_MIST",
+                "type": "png"
+            },
+            {
+                "file": "images/weather/rain.png",
+                "name": "WEATHER_ICON_RAIN",
+                "type": "png"
+            },
+            {
+                "file": "images/weather/scattered-clouds.png",
+                "name": "WEATHER_ICON_SCATTERED_CLOUDS",
+                "type": "png"
+            },
+            {
+                "file": "images/weather/shower-rain.png",
+                "name": "WEATHER_ICON_SHOWER_RAIN",
+                "type": "png"
+            },
+            {
+                "file": "images/weather/snow.png",
+                "name": "WEATHER_ICON_SNOW",
+                "type": "png"
+            },
+            {
+                "file": "images/weather/thunderstorm.png",
+                "name": "WEATHER_ICON_THUNDERSTORM",
+                "type": "png"
             }
         ]
     },

@@ -15,6 +15,8 @@ static Window *s_main_window;
 static TextLayer *s_time_layer;
 static TextLayer *s_date_layer;
 static TextLayer *s_weather_layer;
+static GBitmap *s_weather_icon_bitmap;
+static BitmapLayer *s_weather_icon_layer;
 static GBitmap *s_bitmap;
 static BitmapLayer *s_bitmap_layer;
 static GBitmap *s_card_bitmap;
@@ -33,8 +35,6 @@ static TextLayer *s_textlayer_event_time;
 
 // Store incoming information
 static char temperature_buffer[8];
-static char conditions_buffer[32];
-static char weather_layer_buffer[32];
 static char event_name_buffer[64];
 static char event_time_buffer[16];
 static char time_to_event_buffer[16];
@@ -162,12 +162,54 @@ static void handle_event_time(int day, int month, int year, int hour, int minute
   event_time.tm_year = year - 1900;
   event_time.tm_min = minutes;
   event_time.tm_hour = hour;
-  time_t event_time_t = mktime(&event_time);
+  mktime(&event_time);
 
   strftime(event_time_buffer, sizeof(event_time_buffer), "%H:%M", &event_time);
   text_layer_set_text(s_textlayer_event_time, event_time_buffer);
 
   calculate_time_to_event();
+}
+
+// Called when receiving the weather conditions
+static void handle_weather_icon(int conditions_id){
+  int icon_resource_id = 0;
+  switch (conditions_id) {
+    case 1:
+      icon_resource_id = RESOURCE_ID_WEATHER_ICON_CLEAR;
+      break;
+    case 2: 
+      icon_resource_id = RESOURCE_ID_WEATHER_ICON_FEW_CLOUDS;
+      break;
+    case 3: 
+      icon_resource_id = RESOURCE_ID_WEATHER_ICON_SCATTERED_CLOUDS;
+      break;
+    case 4:
+      icon_resource_id = RESOURCE_ID_WEATHER_ICON_BROKEN_CLOUDS;
+      break;
+    case 9: 
+      icon_resource_id = RESOURCE_ID_WEATHER_ICON_SHOWER_RAIN;
+      break;
+    case 10: 
+      icon_resource_id = RESOURCE_ID_WEATHER_ICON_RAIN;
+      break;
+    case 11: 
+      icon_resource_id = RESOURCE_ID_WEATHER_ICON_THUNDERSTORM;
+      break;
+    case 13:
+      icon_resource_id = RESOURCE_ID_WEATHER_ICON_SNOW;
+      break;
+    case 50:
+      icon_resource_id = RESOURCE_ID_WEATHER_ICON_MIST;
+      break;
+    default:
+      icon_resource_id = 0;
+  }
+
+  if (icon_resource_id > 0){
+    s_weather_icon_bitmap = gbitmap_create_with_resource(icon_resource_id);
+    bitmap_layer_set_bitmap(s_weather_icon_layer,s_weather_icon_bitmap);
+  }
+
 }
 
 /******************************************** UI ***************************************************/
@@ -221,13 +263,18 @@ static void main_window_load(Window *window) {
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_date_layer));
   
   // Create temperature Layer
-  s_weather_layer = text_layer_create(GRect(40, 0, 100, 25));
+  s_weather_layer = text_layer_create(GRect(84, 0, 40, 20));
   text_layer_set_background_color(s_weather_layer, GColorClear);
   text_layer_set_text_color(s_weather_layer, GColorWhite);
   text_layer_set_text_alignment(s_weather_layer, GTextAlignmentRight);
   text_layer_set_font(s_weather_layer, fonts_get_system_font(FONT_KEY_GOTHIC_14));
-  text_layer_set_text(s_weather_layer, "Loading...");
+  text_layer_set_text(s_weather_layer, "...");
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_weather_layer));
+
+  // Create weather conditions icon layer
+  s_weather_icon_layer = bitmap_layer_create(GRect(124,0,20,20));
+  bitmap_layer_set_compositing_mode(s_weather_icon_layer, GCompOpSet);
+  layer_add_child(window_layer,bitmap_layer_get_layer(s_weather_icon_layer));
 
   // Create battery Layer
   s_battery_bitmap = gbitmap_create_with_resource(RESOURCE_ID_BATTERY_ICON);
@@ -292,6 +339,8 @@ static void main_window_unload(Window *window) {
     bitmap_layer_destroy(s_bitmap_layer);
     gbitmap_destroy(s_bitmap);
     text_layer_destroy(s_weather_layer);
+    bitmap_layer_destroy(s_weather_icon_layer);
+    gbitmap_destroy(s_weather_icon_bitmap);
     bitmap_layer_destroy(s_battery_bitmap_layer);
     gbitmap_destroy(s_battery_bitmap);
     layer_destroy(s_battery_inside_layer);
@@ -330,6 +379,8 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   // Read first item
   Tuple *t = dict_read_first(iterator);
 
+  int weather_conditions_id = 0;
+
 	int day = 0;
   int month = 0;
   int year = 0;
@@ -342,9 +393,10 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     switch(t->key) {
       case KEY_TEMPERATURE:
         snprintf(temperature_buffer, sizeof(temperature_buffer), "%d°C", (int)t->value->int32);
+        text_layer_set_text(s_weather_layer, temperature_buffer);
         break;
       case KEY_CONDITIONS:
-        snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", t->value->cstring);
+        weather_conditions_id = (int)t->value->int32;
         break;
       case KEY_EVENT_NAME:
     		snprintf(event_name_buffer, sizeof(event_name_buffer), "%s", t->value->cstring);
@@ -375,11 +427,11 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
     // Look for next item
     t = dict_read_next(iterator);
   }
-  // Assemble full string and display
-  snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s, %s", conditions_buffer, temperature_buffer);
-  text_layer_set_text(s_weather_layer, weather_layer_buffer);
 
+  // weather conditions icon
+  handle_weather_icon(weather_conditions_id);
 
+  // handle the event time
   handle_event_time(day, month, year, hour, minutes);
 }
 

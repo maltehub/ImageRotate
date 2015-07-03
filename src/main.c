@@ -204,6 +204,11 @@ static void calculate_time_to_event(){
   }
 
   text_layer_set_text(s_textlayer_time, time_to_event_buffer);
+
+  // If the event has happened, then request the next one.
+  if (seconds <= 0) {
+    
+  }
 }
 
 static void update_time() {
@@ -399,20 +404,18 @@ static void main_window_load(Window *window) {
   s_res_gothic_14 = fonts_get_system_font(FONT_KEY_GOTHIC_14);
   // Time to the event
   s_textlayer_time = text_layer_create(GRect(16, 178, 120, 17));
-  text_layer_set_text(s_textlayer_time, "10 min");
   text_layer_set_background_color(s_textlayer_time, GColorClear);
   layer_add_child(window_get_root_layer(window), (Layer *)s_textlayer_time);
   
   // Title of the event
   s_textlayer_event_title = text_layer_create(GRect(16, 193, 120, 20));
-  text_layer_set_text(s_textlayer_event_title, "Picnic with friends");
+  text_layer_set_text(s_textlayer_event_title, "Loading...");
   text_layer_set_font(s_textlayer_event_title, s_res_gothic_14);
   text_layer_set_background_color(s_textlayer_event_title, GColorClear);
   layer_add_child(window_get_root_layer(window), (Layer *)s_textlayer_event_title);
   
   // Time and place (or other info)
   s_textlayer_event_time = text_layer_create(GRect(16, 216, 120, 26));
-  text_layer_set_text(s_textlayer_event_time, "12:30 PM");
   text_layer_set_font(s_textlayer_event_time, s_res_gothic_14);
   text_layer_set_background_color(s_textlayer_event_time, GColorClear);
   layer_add_child(window_get_root_layer(window), (Layer *)s_textlayer_event_time);

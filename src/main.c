@@ -229,24 +229,32 @@ static void update_time() {
   text_layer_set_text(s_time_layer, buffer);
   text_layer_set_text(s_date_layer, date_buffer);
 
-  // Update time to event
-  calculate_time_to_event();
+  if (event_time.tm_mday > 0 && 
+      event_time.tm_mon > 0 &&
+      event_time.tm_year > 0) {
+      // Update time to event only if event time is initialized
+      calculate_time_to_event();
+  }
 }
 
 // this function is called when the event time is received from the google calendar
 static void handle_event_time(int day, int month, int year, int hour, int minutes) {
-  // Assemble event time
-  event_time.tm_mday = day;
-  event_time.tm_mon = month;
-  event_time.tm_year = year - 1900;
-  event_time.tm_min = minutes;
-  event_time.tm_hour = hour;
-  mktime(&event_time);
+  APP_LOG(APP_LOG_LEVEL_INFO, "day: %d, month: %d, year: %d, houw: %d, minutes: %d", day,month,year,hour,minutes);
 
-  strftime(event_time_buffer, sizeof(event_time_buffer), "%H:%M", &event_time);
-  text_layer_set_text(s_textlayer_event_time, event_time_buffer);
+  if (day > 0 && month > 0 && year > 0) {
+    // Assemble event time
+    event_time.tm_mday = day;
+    event_time.tm_mon = month;
+    event_time.tm_year = year - 1900;
+    event_time.tm_min = minutes;
+    event_time.tm_hour = hour;
+    mktime(&event_time);
 
-  calculate_time_to_event();
+    strftime(event_time_buffer, sizeof(event_time_buffer), "%H:%M", &event_time);
+    text_layer_set_text(s_textlayer_event_time, event_time_buffer);
+
+    calculate_time_to_event();
+  }
 }
 
 // Called when receiving the weather conditions
@@ -342,7 +350,7 @@ static void main_window_load(Window *window) {
   layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_date_layer));
   
   // Create temperature Layer
-  s_weather_layer = text_layer_create(GRect(84, 0, 40, 20));
+  s_weather_layer = text_layer_create(GRect(80, 0, 40, 20));
   text_layer_set_background_color(s_weather_layer, GColorClear);
   text_layer_set_text_color(s_weather_layer, GColorWhite);
   text_layer_set_text_alignment(s_weather_layer, GTextAlignmentRight);
@@ -513,7 +521,11 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
   // handle the event time
   handle_event_time(day, month, year, hour, minutes);
 
-  animate_card();
+  // Only animate card if the event time is already here
+  if (day > 0 && month > 0 && year > 0){
+    animate_card();  
+  }
+  
 }
 
 static void inbox_dropped_callback(AppMessageResult reason, void *context) {
